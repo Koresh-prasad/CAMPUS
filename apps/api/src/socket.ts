@@ -113,7 +113,7 @@ export function broadcastGalleryUpdate(data: any) {
 }
 
 export function broadcastCalendarUpdate(data: any) {
-  if (!io) return;g
+  if (!io) return;
   console.log('[WebSocket] Broadcasting calendar:updated to all client devices');
   io.emit('calendar:updated', data);
 }

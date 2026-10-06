@@ -289,7 +289,7 @@ router.get('/hospital-queue', optionalAuthMiddleware, async (req: Request, res: 
 
     // Include pre-seeded recurring hotspots for realism if database is small
     const hotspots = Object.values(hotspotMap);
-    if (!hotspots.some(h => h.category === 'WATER')) {
+    if (!hotspots.some((h: any) => h.category === 'WATER')) {
       hotspots.push({
         location: 'Block A (3rd Floor Bathrooms)',
         category: 'WATER',
@@ -297,7 +297,7 @@ router.get('/hospital-queue', optionalAuthMiddleware, async (req: Request, res: 
         activeTickets: ['CMP-904121', 'CMP-904144', 'CMP-904189']
       });
     }
-    if (!hotspots.some(h => h.category === 'WIFI')) {
+    if (!hotspots.some((h: any) => h.category === 'WIFI')) {
       hotspots.push({
         location: 'Block C (Wing B Study Area)',
         category: 'WIFI',
@@ -307,28 +307,28 @@ router.get('/hospital-queue', optionalAuthMiddleware, async (req: Request, res: 
     }
 
     // Staff Workload Distribution
-    const staffWorkload = staffProfiles.map((s) => {
-      const assignedTickets = openComplaints.filter((c) => c.assignedStaffId === s.userId);
+    const staffWorkload = staffProfiles.map((s: any) => {
+      const assignedTickets = openComplaints.filter((c: any) => c.assignedStaffId === s.userId);
       return {
         staffId: s.userId,
-        name: s.user.name,
+        name: s.user?.name || 'Staff Member',
         department: s.department,
-        phone: s.user.phone,
+        phone: s.user?.phone || '',
         activeCount: assignedTickets.length,
         status: assignedTickets.length > 3 ? 'HEAVY_LOAD' : (assignedTickets.length > 0 ? 'OPTIMAL' : 'AVAILABLE'),
-        tickets: assignedTickets.map(t => t.ticketNumber)
+        tickets: assignedTickets.map((t: any) => t.ticketNumber)
       };
     });
 
     // Summary Metrics
     const totalQueueLength = queueItems.length;
-    const criticalCount = queueItems.filter(q => q.triageLevel === 'CRITICAL').length;
-    const urgentCount = queueItems.filter(q => q.triageLevel === 'URGENT').length;
+    const criticalCount = queueItems.filter((q: any) => q.triageLevel === 'CRITICAL').length;
+    const urgentCount = queueItems.filter((q: any) => q.triageLevel === 'URGENT').length;
     const avgWaitMinutes = totalQueueLength > 0
-      ? Math.round(queueItems.reduce((acc, q) => acc + q.waitMinutes, 0) / totalQueueLength)
+      ? Math.round(queueItems.reduce((acc: number, q: any) => acc + q.waitMinutes, 0) / totalQueueLength)
       : 12;
     const withinSlaPercentage = totalQueueLength > 0
-      ? Math.round((queueItems.filter(q => !q.isSlaBreached).length / totalQueueLength) * 100)
+      ? Math.round((queueItems.filter((q: any) => !q.isSlaBreached).length / totalQueueLength) * 100)
       : 96;
 
     return res.json({
