@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start CampusHelper (All Servers)",
+      "type": "shell",
+      "command": "pnpm run dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Start Backend API (Port 4000)",
+      "type": "shell",
+      "command": "pnpm run dev:api",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Admin Command Center (Port 3000)",
+      "type": "shell",
+      "command": "pnpm run dev:admin",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Smart Resident App (Port 3001)",
+      "type": "shell",
+      "command": "pnpm run dev:resident",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

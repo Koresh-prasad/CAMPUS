@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="gradMask" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563EB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Full bleed background for maskable icons (Android adaptive icon safe zone is 80% center) -->
+  <rect width="512" height="512" fill="url(#gradMask)"/>
+  
+  <g transform="translate(136, 136)">
+    <!-- Roof -->
+    <path d="M120 15 L15 85 L225 85 Z" fill="#FFFFFF"/>
+    <!-- Pillars -->
+    <rect x="38" y="100" width="24" height="95" rx="6" fill="#DBEAFE"/>
+    <rect x="108" y="100" width="24" height="95" rx="6" fill="#DBEAFE"/>
+    <rect x="178" y="100" width="24" height="95" rx="6" fill="#DBEAFE"/>
+    <!-- Base -->
+    <rect x="15" y="200" width="210" height="20" rx="6" fill="#FFFFFF"/>
+    <!-- Verified Badge -->
+    <circle cx="120" cy="145" r="32" fill="#F59E0B"/>
+    <path d="M110 145 L117 152 L132 135" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

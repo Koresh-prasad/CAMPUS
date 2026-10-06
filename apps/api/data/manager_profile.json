@@ -1,0 +1,18 @@
+{
+  "id": "manager-chief-01",
+  "tenantId": "default",
+  "name": "Dr. Uttam Kumar Jena",
+  "designation": "Students Welfare & Vice Principle ( HOD OF CSE )",
+  "avatarUrl": "http://localhost:4000/uploads/1790279192519-428567708-Screenshot_2026-09-25_011602.png",
+  "email": "uttamkumarjena6789@gmail.com",
+  "phone": "+91 9937541541",
+  "officeRoom": "Admin Block A, 2nd floor",
+  "visitingHours": "Mon-Sat 4:00 PM - 7:00 PM",
+  "emergencyDirectLine": "+91 98765 00000 (Ext 104)",
+  "announcement": "Open office hours for student queries, hostel life improvements and academic welfare.",
+  "status": "AVAILABLE",
+  "deskHeading": "Students Welfare & Vice Principal Executive Desk",
+  "deskBadge": "Executive Command Desk",
+  "deskSubtitle": "Official desk of Vice Principal & Student Welfare for student queries, hostel life improvements, and academic welfare",
+  "updatedAt": "2026-09-27T05:45:49.383Z"
+}

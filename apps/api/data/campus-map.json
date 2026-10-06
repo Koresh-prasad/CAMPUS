@@ -1,0 +1,83 @@
+{
+  "id": "rec-campus-map-master",
+  "campusName": "Raajdhani Engineering College (REC) Autonomous Campus",
+  "location": "Near Mancheswar Railway Station, Bhubaneswar, Odisha 751017",
+  "mapImageUrl": "https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1600&q=85",
+  "description": "Updated official 25-acre master plan including new Innovation Center and Girls Hostel Wing.",
+  "lastUpdated": "2026-10-04T17:52:43.306Z",
+  "updatedBy": "Admin Controller",
+  "zones": [
+    {
+      "id": "zone-1",
+      "name": "Main Academic Complex (Blocks A, B & C)",
+      "category": "ACADEMIC",
+      "locationCode": "BLDG-ACAD-01",
+      "description": "Department of Computer Science, Electronics, Mechanical, Civil & Smart Lecture Theatres.",
+      "timings": "08:00 AM - 06:00 PM",
+      "contact": "+91 (0674) 259-7123"
+    },
+    {
+      "id": "zone-2",
+      "name": "Boys Hostel Campus (Hostel A & B)",
+      "category": "HOSTEL",
+      "locationCode": "HOSTEL-BOYS",
+      "description": "Hostel A (Senior Residency) and Hostel B (Junior Residency) with 24x7 Wi-Fi & Turnstile Access.",
+      "timings": "24 Hours (Curfew 09:30 PM)",
+      "contact": "+91 94370 12345 (Chief Warden)"
+    },
+    {
+      "id": "zone-3",
+      "name": "Girls Hostel Complex (Maa Tarini Niwas)",
+      "category": "HOSTEL",
+      "locationCode": "HOSTEL-GIRLS",
+      "description": "Secure multi-storey female student residency with in-house recreation hall, gym, and CCTV boundary.",
+      "timings": "24 Hours (Curfew 09:00 PM)",
+      "contact": "+91 94370 67890 (Lady Warden)"
+    },
+    {
+      "id": "zone-4",
+      "name": "Central University Library & Knowledge Hub",
+      "category": "ACADEMIC",
+      "locationCode": "LIB-CENTRAL",
+      "description": "Air-conditioned 3-floor library with 45,000+ volumes, IEEE digital journal stations, and discussion pods.",
+      "timings": "08:00 AM - 10:00 PM",
+      "contact": "+91 (0674) 259-7125"
+    },
+    {
+      "id": "zone-5",
+      "name": "24x7 Campus Health & Emergency Medical Unit",
+      "category": "MEDICAL",
+      "locationCode": "MED-OPD-01",
+      "description": "Resident Doctor OPD, emergency first aid trauma bay, critical care dispensary, and 24x7 ambulance ramp.",
+      "timings": "24 Hours Immediate Response",
+      "contact": "+91 98765 43210 (Medical Officer)"
+    },
+    {
+      "id": "zone-6",
+      "name": "Student Dining Hall & Multi-Cuisine Food Court",
+      "category": "DINING",
+      "locationCode": "MESS-CENTRAL",
+      "description": "State-of-the-art hygienic dining hall serving 4 meals daily, plus Nescafe kiosk and night tuck shop.",
+      "timings": "07:30 AM - 10:00 PM",
+      "contact": "+91 (0674) 259-7128"
+    },
+    {
+      "id": "zone-7",
+      "name": "Sports Complex, Cricket Oval & Indoor Badminton",
+      "category": "SPORTS",
+      "locationCode": "SPORTS-ARENA",
+      "description": "Floodlit cricket ground, basketball court, Olympic table tennis hall, and modern fitness gymnasium.",
+      "timings": "05:30 AM - 08:30 PM",
+      "contact": "+91 94370 88990 (Sports Secretary)"
+    },
+    {
+      "id": "zone-8",
+      "name": "Main Gate 1 & Turnstile Security Outpost",
+      "category": "GATE",
+      "locationCode": "GATE-01-NH16",
+      "description": "Primary optical QR turnstile gate pass verification, visitor biometric kiosk, and security guard control.",
+      "timings": "24x7 Armed Guard Station",
+      "contact": "+91 94370 12345 (Gate Desk)"
+    }
+  ]
+}

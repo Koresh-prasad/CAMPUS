@@ -1,0 +1,17 @@
+{
+  "name": "smart-hostel-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"API,ADMIN,RESIDENT\" -c \"blue,green,magenta\" \"pnpm --filter @shms/api run dev\" \"pnpm --filter @shms/admin-web run dev\" \"pnpm --filter @shms/resident-web run dev\"",
+    "dev:api": "pnpm --filter @shms/api run dev",
+    "dev:admin": "pnpm --filter @shms/admin-web run dev",
+    "dev:resident": "pnpm --filter @shms/resident-web run dev",
+    "build": "pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build && pnpm --filter @shms/admin-web run build && pnpm --filter @shms/resident-web run build",
+    "seed": "pnpm --filter @shms/api run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+build
+.env
+.env.local
+*.log
+*.sqlite
+*.sqlite-journal
+.turbo
+.DS_Store

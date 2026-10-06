@@ -1,0 +1,48 @@
+name: SHMS CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    name: Build & Verify Monorepo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Shared Types & Contracts
+        run: pnpm --filter @shms/shared run build
+
+      - name: Prisma Client Generate & DB Push
+        run: |
+          cd apps/api
+          pnpm prisma generate
+          pnpm prisma db push
+
+      - name: Run Alerting Rules Engine Test Suite
+        run: pnpm --filter @shms/api run test:rules
+
+      - name: Build Admin Web Console
+        run: pnpm --filter @shms/admin-web run build
+
+      - name: Build Resident Mobile-Web App
+        run: pnpm --filter @shms/resident-web run build

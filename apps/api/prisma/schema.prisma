@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  code      String   @unique
+  logoUrl   String?
+  primaryColor String? @default("#1E40AF")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  hostels   Hostel[]
+  users     User[]
+}
+
+model Hostel {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  code      String
+  address   String
+  type      String   // "BOYS", "GIRLS", "CO_ED", "CORP_PG"
+  curfewTime String  @default("21:30")
+  capacity  Int      @default(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  blocks    Block[]
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  hostelId  String
+  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "Nilgiri Block A"
+  floors    Int      @default(4)
+  rooms     Room[]
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  blockId     String
+  block       Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  roomNumber  String   // e.g. "A-204"
+  floor       Int
+  capacity    Int      @default(2)
+  type        String   @default("DOUBLE_SHARING") // "SINGLE", "DOUBLE", "TRIPLE"
+  status      String   @default("AVAILABLE") // "AVAILABLE", "FULL", "MAINTENANCE"
+  beds        Bed[]
+}
+
+model Bed {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bedNumber String   // e.g. "B1", "B2"
+  isOccupied Boolean @default(false)
+  residentId String?  @unique
+}
+
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email         String    @unique
+  phone         String
+  passwordHash  String
+  name          String
+  role          String    // DIRECTOR, WARDEN, SECURITY, ACCOUNTS, STUDENT, STAFF
+  avatarUrl     String?
+  status        String    @default("ACTIVE") // "ACTIVE", "PENDING_APPROVAL", "REJECTED"
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  residentProfile ResidentProfile?
+  staffProfile    StaffProfile?
+  complaints      Complaint[]       @relation("ResidentComplaints")
+  assignedComplaints Complaint[]    @relation("AssignedComplaints")
+  passes          Pass[]            @relation("ResidentPasses")
+  emergencyAlerts EmergencyAlert[]
+  visitors        Visitor[]
+  vehicles        Vehicle[]
+  bills           Bill[]
+  auditLogs       AuditLog[]
+  pollVotes       PollVote[]
+}
+
+model ResidentProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId        String   @unique // e.g. "CS2023-089"
+  roomNumber       String
+  blockName        String
+  bloodGroup       String?
+  parentName       String?
+  parentPhone      String?
+  emergencyContact String?
+  idProofNumber    String?
+  course           String?
+  year             String?
+  kycComplete      Boolean  @default(false)
+  approvalNote     String?
+  currentPresence  String   @default("IN_HOSTEL") // "IN_HOSTEL", "OUT_ON_PASS", "OUT_ON_LEAVE", "OVERDUE"
+  lastGateScanAt   DateTime?
+}
+
+model StaffProfile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  designation String
+  department  String  // "HOUSEKEEPING", "ELECTRICAL", "SECURITY", "MESS", "ADMIN"
+  shift       String  @default("GENERAL")
+}
+
+model Complaint {
+  id                 String   @id @default(uuid())
+  ticketNumber       String   @unique
+  title              String
+  description        String
+  category           String   // WATER, ELECTRICITY, etc.
+  status             String   @default("RAISED") // RAISED, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, REOPENED
+  priority           String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  residentId         String
+  resident           User     @relation("ResidentComplaints", fields: [residentId], references: [id], onDelete: Cascade)
+  assignedStaffId    String?
+  assignedStaff      User?    @relation("AssignedComplaints", fields: [assignedStaffId], references: [id])
+  isAnonymous        Boolean  @default(false)
+  photoUrl           String?
+  videoUrl           String?
+  voiceUrl           String?
+  slaHours           Int      @default(24)
+  slaDueAt           DateTime
+  rating             Int?
+  ratingComment      String?
+  resolvedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  logs               ComplaintLog[]
+}
+
+model ComplaintLog {
+  id          String    @id @default(uuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  actorName   String
+  action      String
+  note        String?
+  timestamp   DateTime  @default(now())
+}
+
+model Pass {
+  id              String    @id @default(uuid())
+  passNumber      String    @unique
+  passType        String    // GATE_PASS, EXIT_PASS, LEAVE
+  residentId      String
+  resident        User      @relation("ResidentPasses", fields: [residentId], references: [id], onDelete: Cascade)
+  reason          String
+  destination     String
+  validFrom       DateTime
+  validTill       DateTime
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, ACTIVE, EXPIRED, RETURNED
+  qrCodeToken     String    @unique
+  approvedById    String?
+  approvedByName  String?
+  rejectionReason String?
+  actualExitAt    DateTime?
+  actualReturnAt  DateTime?
+  isOverdue       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  scanLogs        GateScanLog[]
+}
+
+model GateScanLog {
+  id          String   @id @default(uuid())
+  passId      String?
+  pass        Pass?    @relation(fields: [passId], references: [id])
+  personName  String
+  personType  String   // "RESIDENT", "VISITOR", "STAFF"
+  scanType    String   // "EXIT", "ENTRY"
+  guardName   String
+  timestamp   DateTime @default(now())
+  notes       String?
+}
+
+model EmergencyAlert {
+  id              String    @id @default(uuid())
+  emergencyType   String    // MEDICAL, FIRE, SECURITY_THREAT, OTHER
+  status          String    @default("ACTIVE") // ACTIVE, INVESTIGATING, RESOLVED, FALSE_ALARM
+  residentId      String
+  resident        User      @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  locationDetails String?
+  gpsCoords       String?
+  notes           String?
+  resolvedById    String?
+  resolvedByName  String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model Visitor {
+  id               String    @id @default(uuid())
+  visitorName      String
+  visitorPhone     String
+  residentId       String
+  resident         User      @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  purpose          String
+  expectedDate     String
+  expectedTime     String
+  checkInAt        DateTime?
+  checkOutAt       DateTime?
+  status           String    @default("PRE_APPROVED") // PRE_APPROVED, CHECKED_IN, CHECKED_OUT, OVERSTAYED, REJECTED
+  qrPassCode       String    @unique
+  isRegularVisitor Boolean   @default(false)
+  idProofUrl       String?
+  createdAt        DateTime  @default(now())
+}
+
+model Vehicle {
+  id            String   @id @default(uuid())
+  residentId    String
+  resident      User     @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  vehicleType   String   // TWO_WHEELER, FOUR_WHEELER, BICYCLE
+  licensePlate  String   @unique
+  model         String
+  parkingSlot   String?
+  digitalPassQr String   @unique
+  status        String   @default("APPROVED") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime @default(now())
+}
+
+model Notice {
+  id               String   @id @default(uuid())
+  title            String
+  content          String
+  category         String   // GENERAL, ACADEMIC, EMERGENCY, EVENT, MAINTENANCE
+  isPinned         Boolean  @default(false)
+  isEmergencyAlert Boolean  @default(false)
+  authorName       String
+  targetAudience   String   @default("ALL")
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime?
+}
+
+model Poll {
+  id        String       @id @default(uuid())
+  question  String
+  deadline  DateTime
+  createdAt DateTime     @default(now())
+  options   PollOption[]
+  votes     PollVote[]
+}
+
+model PollOption {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text      String
+  votes     Int        @default(0)
+  pollVotes PollVote[]
+}
+
+model PollVote {
+  id       String     @id @default(uuid())
+  pollId   String
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId String
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  dayOfWeek   String   // MONDAY, TUESDAY, etc.
+  mealType    String   // BREAKFAST, LUNCH, SNACKS, DINNER
+  items       String   // JSON string or comma-separated
+  specialNote String?
+}
+
+model Bill {
+  id                 String    @id @default(uuid())
+  invoiceNumber      String    @unique
+  residentId         String
+  resident           User      @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  title              String
+  rentAmount         Float     @default(0)
+  messAmount         Float     @default(0)
+  electricityAmount  Float     @default(0)
+  maintenanceAmount  Float     @default(0)
+  fineAmount         Float     @default(0)
+  totalAmount        Float
+  paidAmount         Float     @default(0)
+  dueAmount          Float
+  status             String    @default("PENDING") // PENDING, PAID, PARTIAL, OVERDUE
+  dueDate            DateTime
+  createdAt          DateTime  @default(now())
+  payments           Payment[]
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  billId         String
+  bill           Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  amount         Float
+  transactionRef String   @unique
+  method         String   // UPI, NET_BANKING, CARD, CASH
+  status         String   @default("SUCCESS")
+  receiptUrl     String?
+  paidAt         DateTime @default(now())
+}
+
+model InventoryItem {
+  id                 String    @id @default(uuid())
+  name               String
+  category           String
+  quantity           Int
+  condition          String    @default("GOOD") // GOOD, FAIR, DAMAGED
+  location           String
+  maintenanceDueDate DateTime?
+  updatedAt          DateTime  @updatedAt
+}
+
+model Amenity {
+  id          String           @id @default(uuid())
+  name        String
+  type        String           // GUEST_ROOM, SPORTS_EQUIPMENT, FUNCTION_HALL, LAUNDRY, STUDY_ROOM
+  location    String
+  rules       String?
+  isAvailable Boolean          @default(true)
+  bookings    AmenityBooking[]
+}
+
+model AmenityBooking {
+  id         String   @id @default(uuid())
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  residentId String
+  slotStart  DateTime
+  slotEnd    DateTime
+  status     String   @default("CONFIRMED")
+  createdAt  DateTime @default(now())
+}
+
+model Suggestion {
+  id            String   @id @default(uuid())
+  title         String
+  content       String
+  isAnonymous   Boolean  @default(false)
+  submitterName String?
+  status        String   @default("UNDER_REVIEW") // UNDER_REVIEW, IMPLEMENTED, DECLINED
+  adminFeedback String?
+  createdAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  actorRole   String
+  action      String   // e.g. "APPROVE_LEAVE", "RESOLVE_EMERGENCY", "UPDATE_BILL"
+  entity      String   // e.g. "PASS", "COMPLAINT", "BILL"
+  entityId    String
+  detailsJson String
+  timestamp   DateTime @default(now())
+  user        User?    @relation(fields: [actorId], references: [id])
+}
+
+model NotificationRecord {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // INFO, WARNING, EMERGENCY, PASS
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
