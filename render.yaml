@@ -1,0 +1,17 @@
+services:
+  # 1. Backend REST API & WebSockets
+  - type: web
+    name: campushelper-api
+    runtime: node
+    plan: free
+    rootDir: apps/api
+    buildCommand: pnpm install && pnpm run build
+    startCommand: node dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: JWT_SECRET
+        generateValue: true

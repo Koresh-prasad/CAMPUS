@@ -26,6 +26,7 @@ import managerProfileRouter from './modules/manager-profile/managerProfile.route
 import galleryRouter from './modules/gallery/gallery.router';
 import calendarRouter from './modules/calendar/calendar.router';
 import campusMapRouter from './modules/campus-map/campusMap.router';
+import { bootstrapDatabase } from './bootstrap';
 import path from 'path';
 import fs from 'fs';
 
@@ -85,10 +86,11 @@ app.use('/api/calendar', calendarRouter);
 app.use('/api/campus-map', campusMapRouter);
 
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`===================================================`);
   console.log(`🚀 SHMS Backend API running on http://localhost:${PORT}`);
   console.log(`📡 WebSocket Real-Time Gateway ready`);
   console.log(`🛡️ Rules Engine Active (Curfew & Overstay Monitoring)`);
   console.log(`===================================================`);
+  await bootstrapDatabase();
 });
