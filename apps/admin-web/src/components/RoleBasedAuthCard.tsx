@@ -574,7 +574,7 @@ export default function RoleBasedAuthCard({
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1 leading-snug">
-                    Access student services, academic information, campus facilities, announcements, and personal student features.
+                    Access student services, academic information, campus facilities, gate pass generation, and grievance reporting.
                   </p>
                 </div>
                 {/* Selection indicator */}
@@ -589,48 +589,7 @@ export default function RoleBasedAuthCard({
                 </div>
               </div>
 
-              {/* Option 2: STAFF */}
-              <div
-                onClick={() => setSelectedRole('STAFF')}
-                className={`p-3.5 rounded-2xl border-2 transition cursor-pointer flex items-start space-x-3.5 relative ${
-                  selectedRole === 'STAFF'
-                    ? 'border-blue-600 bg-blue-50/70 shadow-sm'
-                    : 'border-slate-200/80 bg-white hover:border-blue-300 hover:bg-slate-50/60'
-                }`}
-              >
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                    selectedRole === 'STAFF'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                      : 'bg-emerald-50 text-emerald-600'
-                  }`}
-                >
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0 pr-6">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="font-extrabold text-xs text-slate-900 tracking-wide uppercase">STAFF</h3>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100/60 px-1.5 py-0.2 rounded">
-                      4 Categories
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-snug">
-                    Access campus operational portals (Warden, Security, Doctor / Nurse, Services).
-                  </p>
-                </div>
-                {/* Selection indicator */}
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center absolute right-3.5 top-3.5 ${
-                    selectedRole === 'STAFF'
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-slate-300 bg-white'
-                  }`}
-                >
-                  {selectedRole === 'STAFF' && <Check className="w-3 h-3 stroke-[3]" />}
-                </div>
-              </div>
-
-              {/* Option 3: ADMIN MANAGER */}
+              {/* Option 2: ADMIN MANAGER */}
               <div
                 onClick={() => setSelectedRole('ADMIN_MANAGER')}
                 className={`p-3.5 rounded-2xl border-2 transition cursor-pointer flex items-start space-x-3.5 relative ${
@@ -652,11 +611,11 @@ export default function RoleBasedAuthCard({
                   <div className="flex items-center space-x-2">
                     <h3 className="font-extrabold text-xs text-slate-900 tracking-wide uppercase">ADMIN MANAGER</h3>
                     <span className="text-[10px] font-bold text-purple-600 bg-purple-100/60 px-1.5 py-0.2 rounded">
-                      Executive
+                      Campus Control
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1 leading-snug">
-                    Manage campus operations, student records, staff, departments, facilities, and campus settings.
+                    Manage campus operations, all staff roles (Warden, Security, Services, Medical), admissions, and college settings.
                   </p>
                 </div>
                 {/* Selection indicator */}
@@ -680,16 +639,14 @@ export default function RoleBasedAuthCard({
                 if (selectedRole === 'STUDENT') {
                   setEmail('student.rahul@campus.edu');
                   setAuthStep('STUDENT_LOGIN');
-                } else if (selectedRole === 'STAFF') {
-                  setAuthStep('STAFF_ROLE_SELECT');
-                } else if (selectedRole === 'ADMIN_MANAGER') {
+                } else {
                   setEmail('admin@rec.ac.in');
                   setAuthStep('ADMIN_LOGIN');
                 }
               }}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-500/25 transition flex items-center justify-center space-x-2 text-xs cursor-pointer mt-4"
             >
-              <span>Continue as {selectedRole.replace('_', ' ')}</span>
+              <span>Continue as {selectedRole === 'ADMIN_MANAGER' ? 'Admin Manager' : 'Student'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 

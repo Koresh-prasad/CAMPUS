@@ -40,6 +40,10 @@ import {
   X,
   Radio,
   FileText,
+  Bed,
+  BookOpen,
+  Activity,
+  ArrowRight,
 } from 'lucide-react';
 import {
   INITIAL_SECURITY_GATE_PASSES,
@@ -142,6 +146,166 @@ export function AdminStaffRolesView({
 
   return (
     <div className="space-y-6">
+      {/* 0. STAFF PLATFORMS COMMAND CENTERS */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-5 text-white shadow-xl border border-white/10 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-extrabold uppercase tracking-wider border border-blue-400/30">
+                Centralized Staff Role Control
+              </span>
+              <span className="text-xs text-emerald-400 font-bold flex items-center space-x-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                <span>All 5 Platforms Connected</span>
+              </span>
+            </div>
+            <h2 className="text-lg font-black text-white mt-1 tracking-tight">
+              Staff Platforms & Operational Command Centers
+            </h2>
+            <p className="text-xs text-slate-300">
+              Admin Manager master access to all campus staff platforms. Switch or open any specialized portal in 1 click.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3.5 pt-1">
+          {/* 1. Warden */}
+          <div className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/10 transition flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+                  <Bed className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  Hostels
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white group-hover:text-blue-300 transition">
+                Warden Platform
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Hostel superintendents, floor care, room allocations, leave & gate pass approvals.
+              </p>
+            </div>
+            <a
+              href="/staff/warden/dashboard"
+              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <span>Launch Platform</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          {/* 2. Security */}
+          <div className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/10 transition flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center font-bold">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-400/20">
+                  Turnstiles
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white group-hover:text-blue-300 transition">
+                Security Platform
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                QR gate scanner, student check-in/out turnstiles, visitor & vehicle entry logs.
+              </p>
+            </div>
+            <a
+              href="/staff/security/dashboard"
+              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <span>Launch Platform</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          {/* 3. Services */}
+          <div className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/10 transition flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold">
+                  <Wrench className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-400/20">
+                  Maintenance
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white group-hover:text-blue-300 transition">
+                Service Platform
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Electrical, plumbing, Wi-Fi repairs, housekeeping work orders & staff dispatcher.
+              </p>
+            </div>
+            <a
+              href="/staff/services/dashboard"
+              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <span>Launch Platform</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          {/* 4. Medical */}
+          <div className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/10 transition flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-300 flex items-center justify-center font-bold">
+                  <Heart className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-400/20">
+                  Health Care
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white group-hover:text-blue-300 transition">
+                Medical Platform
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Health center dispensary, OPD doctor queue, medical leave approvals & 24x7 ambulance.
+              </p>
+            </div>
+            <a
+              href="/staff/medical/dashboard"
+              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <span>Launch Platform</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          {/* 5. Faculty */}
+          <div className="bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/10 transition flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-400/20">
+                  Academics
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white group-hover:text-blue-300 transition">
+                Faculty Platform
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Departmental courses, academic mentoring, student consultations & classroom coordination.
+              </p>
+            </div>
+            <a
+              href="/staff/faculty/dashboard"
+              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <span>Launch Platform</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Subtab Bar */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center space-x-2">

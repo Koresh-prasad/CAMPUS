@@ -515,7 +515,7 @@ export default function RoleGuard({ allowedRoles, portalTitle, children }: RoleG
   const isAuthorized = allowedRoles.some((role) => {
     const rUpper = role.toUpperCase();
     if (rUpper === userRole) return true;
-    if (isCollegeAdmin && (rUpper === 'ADMIN' || rUpper === 'ADMIN_MANAGER' || rUpper === 'DIRECTOR' || rUpper === 'STAFF' || rUpper === 'WARDEN')) {
+    if (isCollegeAdmin) {
       return true;
     }
     if ((userRole === 'RESIDENT' || userRole === 'STUDENT') && (rUpper === 'STUDENT' || rUpper === 'RESIDENT')) return true;
