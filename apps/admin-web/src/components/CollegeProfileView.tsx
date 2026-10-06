@@ -83,7 +83,7 @@ export default function CollegeProfileView({
 
   // Fetch live campus map on mount
   useEffect(() => {
-    fetch('http://localhost:4000/api/campus-map')
+    fetch('/api/campus-map')
       .then((r) => r.json())
       .then((d) => {
         if (d?.data) {
@@ -99,7 +99,7 @@ export default function CollegeProfileView({
   // Fetch Gallery Items
   const fetchGallery = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/gallery');
+      const res = await fetch('/api/gallery');
       if (res.ok) {
         const d = await res.json();
         setGalleryItems(d.items || []);
@@ -111,7 +111,7 @@ export default function CollegeProfileView({
 
   useEffect(() => {
     fetchGallery();
-    const socket = io('http://localhost:4000');
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
     socket.on('gallery:updated', () => {
       fetchGallery();
     });
@@ -153,7 +153,7 @@ export default function CollegeProfileView({
     }
     setSavingGalleryItem(true);
     try {
-      const res = await fetch('http://localhost:4000/api/gallery', {
+      const res = await fetch('/api/gallery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,7 +193,7 @@ export default function CollegeProfileView({
   const handleDeleteGalleryItem = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to delete "${title}" from the college gallery?`)) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/gallery/${id}`, {
+      const res = await fetch(`/api/gallery/${id}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -230,7 +230,7 @@ export default function CollegeProfileView({
     e.preventDefault();
     setSavingMap(true);
     try {
-      const res = await fetch('http://localhost:4000/api/campus-map', {
+      const res = await fetch('/api/campus-map', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -74,7 +74,7 @@ import {
   AdminMyProfileView,
 } from './adminComponents';
 
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = '/api';
 
 export default function AdminDashboardPage() {
   return (
@@ -276,7 +276,7 @@ function AdminPortalContent({
     fetchAdminData();
 
     // Socket.io for instant real-time notifications and approvals
-    const socket = io('http://localhost:4000');
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
     socket.on('connect', () => {
       console.log('[Admin Dashboard] Socket connected');
     });

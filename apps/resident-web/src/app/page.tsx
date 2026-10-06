@@ -71,8 +71,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
 import { Language, getResidentTranslation } from '../lib/i18n';
 
-const API_BASE = 'http://localhost:4000/api';
-const SOCKET_URL = 'http://localhost:4000';
+const API_BASE = '/api';
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
 
 // 8 Rich Complaint Categories with Colors, Icons, and SLA
 const COMPLAINT_CATEGORIES = [
@@ -1557,7 +1557,7 @@ export default function ResidentApp() {
           </div>
 
           <a
-            href="http://localhost:3000"
+            href={process.env.NEXT_PUBLIC_ADMIN_WEB_URL || 'http://localhost:3000'}
             target="_blank"
             rel="noreferrer"
             className="text-xs font-semibold text-slate-300 hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 flex items-center space-x-1.5 transition"

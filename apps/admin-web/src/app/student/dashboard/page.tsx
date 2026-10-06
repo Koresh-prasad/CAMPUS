@@ -90,7 +90,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
 
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = '/api';
 
 // =========================================================================
 // 19 NAVIGATION MODULE TABS
@@ -2764,7 +2764,7 @@ function StudentPortalContent({
     fetchStudentData();
 
     // Socket.io for live updates from admin uploads & actions
-    const socket = io('http://localhost:4000');
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
     socket.on('connect', () => {
       console.log('[Student Dashboard] Socket connected');
     });

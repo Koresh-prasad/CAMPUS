@@ -100,8 +100,8 @@ import {
 import io from 'socket.io-client';
 import { AdminLanguage, getAdminTranslation } from '../lib/i18n';
 
-const API_BASE = 'http://localhost:4000/api';
-const SOCKET_URL = 'http://localhost:4000';
+const API_BASE = '/api';
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
 
 export default function AdminPanel() {
   // Navigation Sections
@@ -1518,7 +1518,7 @@ export default function AdminPanel() {
               Connect &nbsp;•&nbsp; Support &nbsp;•&nbsp; Grow
             </span>
             <a
-              href="http://localhost:3001"
+              href={process.env.NEXT_PUBLIC_RESIDENT_WEB_URL || 'http://localhost:3001'}
               target="_blank"
               rel="noreferrer"
               className="text-xs font-bold text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 flex items-center space-x-1.5 transition cursor-pointer"
@@ -3592,14 +3592,14 @@ export default function AdminPanel() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <a
-                    href="http://localhost:4000/api/compliance/export/grievances.csv"
+                    href="/api/compliance/export/grievances.csv"
                     download="NAAC_Criterion_5_1_Grievance_Redressal.csv"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition flex items-center space-x-1"
                   >
                     <span>Criterion 5.1 (Grievance CSV)</span>
                   </a>
                   <a
-                    href="http://localhost:4000/api/compliance/export/safety-audit.csv"
+                    href="/api/compliance/export/safety-audit.csv"
                     download="NAAC_Criterion_7_1_Safety_Audit.csv"
                     className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition flex items-center space-x-1"
                   >

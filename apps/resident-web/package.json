@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001"
+    "start": "next start -p 3001",
+    "start:render": "next start -p ${PORT:-3001}"
   },
   "dependencies": {
     "@shms/shared": "workspace:*",

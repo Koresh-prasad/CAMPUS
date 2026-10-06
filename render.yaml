@@ -1,17 +1,57 @@
 services:
-  # 1. Backend REST API & WebSockets
   - type: web
-    name: campushelper-api
+    name: campus-api
     runtime: node
     plan: free
-    rootDir: apps/api
-    buildCommand: pnpm install && pnpm run build
-    startCommand: node dist/server.js
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build
+    startCommand: pnpm --filter @shms/api run start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: 20
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: file:./dev.db
+        value: file:./prisma/dev.db
       - key: JWT_SECRET
         generateValue: true
+
+  - type: web
+    name: campus-admin-web
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/admin-web run build
+    startCommand: pnpm --filter @shms/admin-web run start:render
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_ORIGIN
+        fromService:
+          name: campus-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_RESIDENT_WEB_URL
+        fromService:
+          name: campus-resident-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: campus-resident-web
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/resident-web run build
+    startCommand: pnpm --filter @shms/resident-web run start:render
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_ORIGIN
+        fromService:
+          name: campus-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_ADMIN_WEB_URL
+        fromService:
+          name: campus-admin-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL

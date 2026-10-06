@@ -98,7 +98,7 @@ export default function AdminGrievanceDeskView({
 
   // Socket listener for real-time grievance notification
   useEffect(() => {
-    const socket = io('http://localhost:4000');
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
 
     socket.on('connect', () => {
       console.log('[AdminGrievanceDesk] Connected to real-time grievance socket');
@@ -160,7 +160,7 @@ export default function AdminGrievanceDeskView({
   const handleUpdateStatus = async (complaintId: string, newStatus: 'IN_PROGRESS' | 'RESOLVED') => {
     setUpdatingId(complaintId);
     try {
-      const res = await fetch(`http://localhost:4000/api/complaints/${complaintId}/status`, {
+      const res = await fetch(`/api/complaints/${complaintId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

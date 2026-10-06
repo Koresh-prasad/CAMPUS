@@ -35,6 +35,8 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+app.set('trust proxy', 1);
+
 // Static uploads serving
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {

@@ -2,6 +2,7 @@
   "name": "smart-hostel-system",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "concurrently -n \"API,ADMIN,RESIDENT\" -c \"blue,green,magenta\" \"pnpm --filter @shms/api run dev\" \"pnpm --filter @shms/admin-web run dev\" \"pnpm --filter @shms/resident-web run dev\"",
     "dev:api": "pnpm --filter @shms/api run dev",

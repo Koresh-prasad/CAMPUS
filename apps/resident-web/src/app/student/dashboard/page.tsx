@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 
 export default function StudentDashboardRedirect() {
   useEffect(() => {
-    window.location.href = 'http://localhost:3000/student/dashboard';
+    const adminUrl = process.env.NEXT_PUBLIC_ADMIN_WEB_URL || 'http://localhost:3000';
+    window.location.href = `${adminUrl.replace(/\/$/, '')}/student/dashboard`;
   }, []);
 
   return (

@@ -243,7 +243,7 @@ export default function RoleGuard({ allowedRoles, portalTitle, children }: RoleG
     const checkApprovalStatus = async () => {
       try {
         const emailQuery = user.email ? `?email=${encodeURIComponent(user.email)}` : `?userId=${user.id}`;
-        const res = await fetch(`http://localhost:4000/api/auth/check-status${emailQuery}`);
+        const res = await fetch(`/api/auth/check-status${emailQuery}`);
         if (res.ok) {
           const data = await res.json();
           if (data.status === 'ACTIVE') {
@@ -276,7 +276,7 @@ export default function RoleGuard({ allowedRoles, portalTitle, children }: RoleG
 
     const pollTimer = setInterval(checkApprovalStatus, 3000);
 
-    const socket = io('http://localhost:4000');
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
     const handleApproved = (data: any) => {
       if (
         data.email === user.email ||
@@ -302,7 +302,7 @@ export default function RoleGuard({ allowedRoles, portalTitle, children }: RoleG
     setStatusMessage('');
     try {
       const emailQuery = user?.email ? `?email=${encodeURIComponent(user.email)}` : `?userId=${user?.id}`;
-      const res = await fetch(`http://localhost:4000/api/auth/check-status${emailQuery}`);
+      const res = await fetch(`/api/auth/check-status${emailQuery}`);
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'ACTIVE') {

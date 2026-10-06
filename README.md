@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Smart Hostel Management System (SHMS)
 ### Enterprise Digital Transformation Platform for Hostels, PGs & College Campuses
 
@@ -62,6 +61,18 @@ pnpm run dev
 
 ---
 
+## Render Deployment
+
+This repository includes a `render.yaml` Blueprint at the repository root. In Render, create a new Blueprint from this GitHub repository and Render will provision:
+
+- `campus-api`
+- `campus-admin-web`
+- `campus-resident-web`
+
+The Blueprint wires both web apps to the deployed API using Render service environment variables. The API currently uses the included SQLite demo database with `DATABASE_URL=file:./prisma/dev.db`.
+
+---
+
 ## 👥 Demo Pre-Seeded Accounts
 
 The database comes pre-populated with **Apex Institute of Technology** (Nilgiri Boys & Shivalik Girls Hostels):
@@ -96,7 +107,3 @@ An isolated, testable background service continuously evaluating:
 - **Gate Turnstile Simulator**: Integrated RFID/QR barcode scanner tool verifying visitor and resident passes with live LED feedback.
 - **NAAC / AICTE Accreditation Dossier**: Automated compliance dossier covering Criterion 5.1 (Student Support) & 5.3 (Grievance Redressal).
 - **60-Minute Campus Onboarding Wizard**: 5-step rapid setup for new institutions or branches.
-=======
-# CAMPUSHELPER
-A campus/hostel helper platform connecting students with essential services and support
->>>>>>> bac13997c054ded6638943e192b40770e410303a
