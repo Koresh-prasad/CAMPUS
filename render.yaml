@@ -3,7 +3,7 @@ services:
     name: campus-api
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build
     startCommand: pnpm --filter @shms/api run start
     healthCheckPath: /api/health
     envVars:
@@ -20,7 +20,7 @@ services:
     name: campus-admin-web
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/admin-web run build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @shms/shared run build && pnpm --filter @shms/admin-web run build
     startCommand: pnpm --filter @shms/admin-web run start:render
     envVars:
       - key: NODE_VERSION
@@ -40,7 +40,7 @@ services:
     name: campus-resident-web
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @shms/shared run build && pnpm --filter @shms/resident-web run build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @shms/shared run build && pnpm --filter @shms/resident-web run build
     startCommand: pnpm --filter @shms/resident-web run start:render
     envVars:
       - key: NODE_VERSION
