@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import RoleGuard from '../../../components/RoleGuard';
 import StudentManagementView from '../../../components/StudentManagementView';
@@ -19,9 +20,11 @@ import AdminCentralizedReportsView from '../../../components/AdminCentralizedRep
 import AdminAuditLogsView from '../../../components/AdminAuditLogsView';
 import {
   LayoutDashboard,
+  Home,
   Users,
   GraduationCap,
   Building,
+  Building2,
   BookOpen,
   UserCheck,
   Shield,
@@ -30,6 +33,7 @@ import {
   MapPin,
   ShieldAlert,
   Heart,
+  HeartPulse,
   TrendingUp,
   Settings,
   FileText,
@@ -44,6 +48,7 @@ import {
   AlertTriangle,
   Award,
   ChevronRight,
+  ChevronDown,
   Globe,
   Calendar,
   ExternalLink,
@@ -61,6 +66,13 @@ import {
   Ambulance,
   UserPlus,
   BellRing,
+  LayoutGrid,
+  Check,
+  CheckSquare,
+  ListTodo,
+  ArrowRight,
+  ArrowUpRight,
+  Ticket,
 } from 'lucide-react';
 import { DASHBOARD_MOCK } from '../../../data/dashboardMock';
 import {
@@ -99,25 +111,30 @@ function AdminPortalContent({
   token: string;
   logout: () => void;
 }) {
+  const router = useRouter();
+
   type AdminTab =
     | 'DASHBOARD'
     | 'STUDENTS'
-    | 'STAFF_ROLES'
     | 'HOSTEL'
     | 'LEAVE_GATE_PASS'
-    | 'SECURITY'
-    | 'SERVICES'
-    | 'MEDICAL'
     | 'GRIEVANCES'
     | 'VISITORS'
     | 'EMERGENCY'
+    | 'REPORTS'
+    | 'SETTINGS'
+    // Operational Role Platforms
+    | 'WARDEN'
+    | 'SERVICES'
+    | 'SECURITY'
+    | 'MEDICAL'
+    // Other administrative views
+    | 'STAFF_ROLES'
     | 'NOTICES'
     | 'MESS_MANAGEMENT'
     | 'CALENDAR'
     | 'GALLERY'
     | 'CONTACTS'
-    | 'REPORTS'
-    | 'SETTINGS'
     | 'AUDIT_LOGS'
     | 'MY_PROFILE'
     // Backwards-compatible aliases
@@ -650,125 +667,226 @@ function AdminPortalContent({
     }
   };
 
-  // Navigation Items matching target dashboard (Exact 20 Modules)
-  const navItems = [
-    { id: 'DASHBOARD', emoji: '🏠', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'STUDENTS', emoji: '👨‍🎓', label: 'Student Management', icon: GraduationCap, badge: pendingStudents.length > 0 ? `${pendingStudents.length}` : '' },
-    { id: 'STAFF_ROLES', emoji: '👥', label: 'Staff & Role Management', icon: Users, badge: pendingStaff.length > 0 ? `${pendingStaff.length}` : '' },
-    { id: 'HOSTEL', emoji: '🏢', label: 'Hostel Management', icon: Bed },
-    { id: 'LEAVE_GATE_PASS', emoji: '🚪', label: 'Leave & Gate Pass', icon: FileText, badge: '18' },
-    { id: 'SECURITY', emoji: '🔐', label: 'Security Management', icon: Shield },
-    { id: 'SERVICES', emoji: '🛠️', label: 'Service & Maintenance', icon: Wrench },
-    { id: 'MEDICAL', emoji: '🏥', label: 'Medical Management', icon: Heart },
-    { id: 'GRIEVANCES', emoji: '📝', label: 'Complaints & Grievances', icon: AlertTriangle, badge: complaints.filter((c) => c.status === 'RAISED').length > 0 ? `${complaints.filter((c) => c.status === 'RAISED').length}` : '' },
-    { id: 'VISITORS', emoji: '👥', label: 'Visitor Management', icon: UserCheck, badge: '4' },
-    { id: 'EMERGENCY', emoji: '🚨', label: 'Emergency & SOS', icon: ShieldAlert },
-    { id: 'NOTICES', emoji: '📢', label: 'Notices & Broadcasts', icon: Bell, badge: '3' },
-    { id: 'MESS_MANAGEMENT', emoji: '🍽️', label: 'Mess Management', icon: Utensils },
-    { id: 'CALENDAR', emoji: '📅', label: 'Academic & Campus Calendar', icon: Calendar },
-    { id: 'GALLERY', emoji: '🖼️', label: 'College Gallery', icon: Camera },
-    { id: 'CONTACTS', emoji: '📞', label: 'Campus Contacts', icon: PhoneCall },
-    { id: 'REPORTS', emoji: '📊', label: 'Reports & Analytics', icon: TrendingUp },
-    { id: 'SETTINGS', emoji: '⚙️', label: 'College Settings', icon: Settings },
-    { id: 'AUDIT_LOGS', emoji: '📋', label: 'Audit Logs', icon: FileText },
-    { id: 'MY_PROFILE', emoji: '👤', label: 'My Profile', icon: User },
+  // 9 Essential Admin Manager Modules (Exact specification)
+  const adminModules = [
+    { id: 'DASHBOARD', label: 'Dashboard', icon: Home },
+    {
+      id: 'STUDENTS',
+      label: 'Student Management',
+      icon: GraduationCap,
+      badge: pendingStudents.length > 0 ? `${pendingStudents.length}` : '',
+    },
+    { id: 'HOSTEL', label: 'Hostel Management', icon: Building2 },
+    { id: 'LEAVE_GATE_PASS', label: 'Leave & Gate Pass', icon: FileText, badge: '18' },
+    {
+      id: 'GRIEVANCES',
+      label: 'Complaints & Grievances',
+      icon: AlertTriangle,
+      badge: complaints.filter((c) => c.status === 'RAISED').length > 0 ? `${complaints.filter((c) => c.status === 'RAISED').length}` : '',
+    },
+    { id: 'VISITORS', label: 'Visitor Management', icon: UserCheck, badge: '4' },
+    { id: 'EMERGENCY', label: 'Emergency & SOS', icon: ShieldAlert, badge: activeSosAlert ? 'SOS' : '' },
+    { id: 'REPORTS', label: 'Reports & Analytics', icon: TrendingUp },
+    { id: 'SETTINGS', label: 'College Settings', icon: Settings },
+  ];
+
+  // 4 Operational Role Platforms (Visually distinct cards from normal modules)
+  const rolePlatforms = [
+    {
+      id: 'WARDEN',
+      label: 'Warden',
+      roleTitle: 'Warden Platform',
+      subtitle: 'Hostel & Student Welfare',
+      icon: Building2,
+      href: '/admin/warden',
+      cardBg: 'bg-[#0f2922]/80 hover:bg-[#14382e] border-emerald-800/40 text-emerald-300',
+      iconBg: 'bg-emerald-600 text-white',
+    },
+    {
+      id: 'SERVICES',
+      label: 'Service',
+      roleTitle: 'Service Platform',
+      subtitle: 'Maintenance & Support',
+      icon: Wrench,
+      href: '/admin/service',
+      cardBg: 'bg-[#2a1d12]/80 hover:bg-[#3d2918] border-amber-800/40 text-amber-300',
+      iconBg: 'bg-amber-600 text-white',
+    },
+    {
+      id: 'SECURITY',
+      label: 'Security',
+      roleTitle: 'Security Platform',
+      subtitle: 'Safety & Access Control',
+      icon: Shield,
+      href: '/admin/security',
+      cardBg: 'bg-[#1b1735]/80 hover:bg-[#27214e] border-indigo-800/40 text-indigo-300',
+      iconBg: 'bg-indigo-600 text-white',
+    },
+    {
+      id: 'MEDICAL',
+      label: 'Medical',
+      roleTitle: 'Medical Platform',
+      subtitle: 'Health & Emergency Care',
+      icon: HeartPulse,
+      href: '/admin/medical',
+      cardBg: 'bg-[#2a131a]/80 hover:bg-[#3d1a25] border-rose-800/40 text-rose-300',
+      iconBg: 'bg-rose-600 text-white',
+    },
   ];
 
   return (
-    <div className="flex h-screen bg-[#f4f7fc] text-slate-800 font-sans overflow-hidden">
-      {/* 1. LEFT SIDEBAR */}
-      <aside className="w-64 bg-[#0a192f] text-slate-200 flex flex-col justify-between shrink-0 shadow-xl border-r border-slate-800 select-none">
-        <div className="overflow-y-auto scrollbar-thin">
-          {/* Logo & Platform Badge */}
-          <div className="p-4 border-b border-slate-800 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <Building className="w-5 h-5 text-white" />
+    <div className="flex h-screen bg-[#F4F7FC] text-slate-800 font-sans overflow-hidden">
+      {/* 1. LEFT SIDEBAR (Dark Navy, Organized Admin Modules + Distinct Role Platforms) */}
+      <aside className="w-64 md:w-72 bg-[#0B132B] text-slate-200 flex flex-col justify-between shrink-0 shadow-2xl border-r border-slate-800/80 select-none">
+        <div className="overflow-y-auto scrollbar-thin px-3.5 py-4 space-y-4">
+          {/* Logo & Platform Tagline */}
+          <div className="px-1.5 flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-black text-sm text-white tracking-wide truncate">
-                ADMIN MANAGER HUB
+              <h1 className="font-extrabold text-base text-white tracking-tight leading-tight truncate">
+                CampusHelper
               </h1>
-              <p className="text-[10px] text-blue-400 font-bold truncate">
-                Campus Admin Command Center
+              <p className="text-[10px] text-slate-400 font-medium truncate">
+                One Platform • Every Campus Need
               </p>
             </div>
           </div>
 
-          {/* Admin Capsule */}
-          <div className="p-3.5 mx-3 mt-3 rounded-2xl bg-slate-800/50 border border-slate-700/60 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center shadow-sm">
-              {user.name ? user.name.slice(0, 2).toUpperCase() : 'AM'}
+          {/* Admin Role Selector Capsule */}
+          <div className="p-3 rounded-2xl bg-[#14203D] border border-slate-700/60 flex items-center justify-between shadow-xs">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-slate-800 text-sky-400 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">Admin Manager</p>
+                <p className="text-[10px] text-slate-400 truncate">Manage All Campus Operations</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate">{user.name}</p>
-              <p className="text-[10px] text-sky-400 font-bold truncate">Campus Admin Manager</p>
-              <p className="text-[9px] text-emerald-400 font-semibold truncate">
-                {user.tenantName || 'Raajdhani Engineering College (Autonomous)'}
-              </p>
-            </div>
+            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1 text-xs">
-            <p className="px-3 pt-2 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-              Administration Modules
+          {/* Section 1: ADMIN MANAGER (9 Focused Modules) */}
+          <div className="space-y-1">
+            <p className="px-2 pt-1 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              Admin Manager
             </p>
-            {navItems.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id as AdminTab);
-                    setActiveSubTab('');
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30'
-                      : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5 min-w-0">
-                    <span className="text-sm select-none shrink-0">{tab.emoji}</span>
-                    <span className="truncate">{tab.label}</span>
-                  </div>
-                  <div className="flex items-center space-x-1.5 shrink-0">
-                    {tab.badge && (
-                      <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold truncate max-w-[80px] ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-sky-400'
-                        }`}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                    <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
+            <nav className="space-y-1 text-xs">
+              {adminModules.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id as AdminTab);
+                      setActiveSubTab('');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[#1E6BFF] text-white font-bold shadow-md shadow-blue-600/30'
+                        : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span className="truncate text-xs">{item.label}</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      {item.badge && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold truncate max-w-[80px] ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-sky-400'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                      <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Section 2: ROLE PLATFORMS (4 Distinct Operational Team Cards) */}
+          <div className="space-y-2 pt-2 border-t border-slate-800/70">
+            <div className="px-2 flex items-center space-x-1.5 text-[10px] font-extrabold text-sky-400 uppercase tracking-wider">
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Role Platforms</span>
+            </div>
+
+            <div className="space-y-2">
+              {rolePlatforms.map((role) => {
+                const Icon = role.icon;
+                const isCurrentTab = activeTab === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => router.push(role.href)}
+                    className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between group cursor-pointer shadow-xs ${
+                      role.cardBg
+                    } ${isCurrentTab ? 'ring-2 ring-white/30' : ''}`}
+                    title={`Open ${role.roleTitle}`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg ${role.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white group-hover:text-white truncate">
+                          {role.label}
+                        </p>
+                        <p className="text-[10px] text-slate-300/80 truncate">
+                          {role.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition shrink-0 ml-1" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Sidebar Bottom Banner & Sign Out */}
-        <div className="p-3 border-t border-slate-800 space-y-2">
-          <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-400">
-              <Building className="w-4 h-4" />
+        {/* Sidebar Bottom: User Profile Capsule & Logout */}
+        <div className="p-3 border-t border-slate-800/80 bg-[#070D1F] space-y-2">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="relative">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                  {user.name ? user.name.slice(0, 2).toUpperCase() : 'SP'}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#070D1F]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">{user.name || 'R. Subham Pradhan'}</p>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-[10px] text-slate-400 truncate">Admin Manager</span>
+                  <span className="text-[9px] text-emerald-400 font-semibold">• Online</span>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-white truncate">Empowering Students</p>
-              <p className="text-[9px] text-slate-400 truncate">Building a Safer Campus</p>
-            </div>
+
+            <button
+              onClick={() => setActiveTab('SETTINGS')}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/50 transition cursor-pointer"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
           </div>
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-red-500/20 hover:text-red-400 text-slate-300 text-xs font-bold transition cursor-pointer"
+            className="w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-lg bg-slate-800/60 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 text-xs font-semibold transition cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out Admin</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -776,88 +894,23 @@ function AdminPortalContent({
       {/* 2. MAIN WORKSPACE */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs shrink-0 z-20">
-          {/* Top Left: College Name & Location */}
-          <div className="flex items-center space-x-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
-              <MapPin className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-xs md:text-sm font-black text-slate-900 leading-tight">
-                Raajdhani Engineering College (Autonomous)
-              </h2>
-              <p className="text-[10px] md:text-[11px] text-slate-400 font-medium">Bhubaneswar, Odisha</p>
-            </div>
-          </div>
-
-          {/* Middle: Search Box */}
-          <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
+        <header className="h-16 bg-white border-b border-slate-200/90 px-6 flex items-center justify-between shadow-2xs shrink-0 z-20">
+          {/* Left: Search Box */}
+          <div className="flex items-center flex-1 max-w-md lg:max-w-lg">
             <div className="relative w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search anything..."
+                placeholder="Search students, hostels, rooms, complaints..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-14 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-2xs">
-                Ctrl + K
-              </span>
             </div>
           </div>
 
-          {/* Top Right: Actions, Language Toggle, Bell, Admin Pill */}
-          <div className="flex items-center space-x-2.5 shrink-0">
-            {/* Language Toggle (EN / हिन्दी / ଓଡ଼ିଆ) */}
-            <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">
-              <button
-                onClick={() => setSelectedLang('EN')}
-                className={`px-2 py-1 rounded-lg transition text-[11px] cursor-pointer ${
-                  selectedLang === 'EN' ? 'bg-blue-600 text-white shadow-2xs' : 'hover:text-blue-600'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setSelectedLang('HI')}
-                className={`px-2 py-1 rounded-lg transition text-[11px] cursor-pointer ${
-                  selectedLang === 'HI' ? 'bg-blue-600 text-white shadow-2xs' : 'hover:text-blue-600'
-                }`}
-              >
-                हिन्दी
-              </button>
-              <button
-                onClick={() => setSelectedLang('OD')}
-                className={`px-2 py-1 rounded-lg transition text-[11px] cursor-pointer ${
-                  selectedLang === 'OD' ? 'bg-blue-600 text-white shadow-2xs' : 'hover:text-blue-600'
-                }`}
-              >
-                ଓଡ଼ିଆ
-              </button>
-            </div>
-
-            {/* Approvals Queue Button */}
-            <button
-              onClick={() => {
-                setActiveTab('STUDENTS');
-                setActiveSubTab('Admission Requests');
-              }}
-              className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Approvals Queue ({pendingStaff.length + pendingStudents.length})</span>
-            </button>
-
-            {/* Refresh Button */}
-            <button
-              onClick={fetchAdminData}
-              className="p-2 text-slate-500 hover:text-blue-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-              title="Refresh All Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            </button>
-
+          {/* Right: Notification Bell, Calendar/Time, College Selector */}
+          <div className="flex items-center space-x-3.5 shrink-0 ml-4">
             {/* Notification Bell with Dynamic Real-Time Unread Badge */}
             <div className="relative">
               <button
@@ -866,11 +919,11 @@ function AdminPortalContent({
                 className={`relative p-2 rounded-xl transition cursor-pointer ${
                   showNotificationDropdown ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
                 }`}
-                title="Real-Time Admin Activity & Notifications"
+                title="Notifications"
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4.5 h-4.5" />
                 {notifications.filter((n) => !n.read).length > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
                     {notifications.filter((n) => !n.read).length}
                   </span>
                 )}
@@ -878,26 +931,21 @@ function AdminPortalContent({
 
               {/* Real-time Notifications Popover Dropdown */}
               {showNotificationDropdown && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200/90 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                   <div className="p-3.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <BellRing className="w-4 h-4 text-amber-400" />
-                      <span className="text-xs font-black tracking-wide">Live Campus Activity & Notifications</span>
+                      <span className="text-xs font-black tracking-wide">Live Campus Notifications</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {notifications.some((n) => !n.read) && (
-                        <button
-                          type="button"
-                          onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
-                          className="text-[10px] text-blue-300 hover:text-white underline font-bold transition cursor-pointer"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                      <span className="px-2 py-0.5 rounded-full bg-slate-700 text-[10px] font-bold text-slate-200">
-                        {notifications.length} total
-                      </span>
-                    </div>
+                    {notifications.some((n) => !n.read) && (
+                      <button
+                        type="button"
+                        onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                        className="text-[10px] text-blue-300 hover:text-white underline font-bold cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
                   </div>
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
@@ -968,7 +1016,7 @@ function AdminPortalContent({
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveTab('ANNOUNCEMENTS');
+                        setActiveTab('NOTICES');
                         setShowNotificationDropdown(false);
                       }}
                       className="text-xs text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
@@ -980,14 +1028,22 @@ function AdminPortalContent({
               )}
             </div>
 
-            {/* Admin Avatar & Role Capsule */}
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-2xs">
-                {user.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
+            {/* Date & Time Capsule */}
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <span>{currentDateTime}</span>
+            </div>
+
+            {/* College Badge */}
+            <div className="flex items-center space-x-2.5 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Building className="w-4.5 h-4.5" />
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-bold text-slate-800 leading-tight">{user.name || 'Admin Manager'}</p>
-                <p className="text-[10px] text-blue-600 font-bold">Campus Admin Manager</p>
+                <p className="text-xs font-bold text-slate-900 leading-tight">
+                  Raajdhani Engineering College
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium">Bhubaneswar, Odisha</p>
               </div>
             </div>
           </div>
@@ -1012,10 +1068,7 @@ function AdminPortalContent({
             <div className="flex items-center space-x-2">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('EMERGENCY');
-                  setActiveSubTab('Security');
-                }}
+                onClick={() => router.push('/admin/security')}
                 className="px-4 py-1.5 rounded-xl bg-white text-rose-700 font-black text-xs hover:bg-rose-50 shadow transition cursor-pointer"
               >
                 Dispatch Security
@@ -1039,43 +1092,51 @@ function AdminPortalContent({
           {activeTab === 'DASHBOARD' && (
             <div className="space-y-6">
               {/* 1. Welcome Banner */}
-              <div className="relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-900 min-h-[140px] flex items-center">
+              <div className="relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-[#0A1628] min-h-[140px] flex items-center">
                 <img
                   src="/images/rec-building.jpg"
-                  alt="Raajdhani Engineering College"
+                  alt="Raajdhani Engineering College Campus"
                   loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover object-center opacity-35"
+                  className="absolute right-0 inset-y-0 w-1/2 h-full object-cover object-center opacity-40 mix-blend-luminosity"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-900/80 to-blue-950/65" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#071328] via-[#0B1E3B]/90 to-transparent" />
 
                 <div className="relative z-10 w-full p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-black text-white tracking-tight">Welcome Back, Admin!</h2>
-                    <p className="text-xs text-slate-200 mt-1 font-medium">
-                      Manage your campus, students and operations efficiently.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-sky-400">
+                      ADMIN MANAGER DASHBOARD
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1">
+                      Good Morning, R. Subham Pradhan!
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1 font-medium">
+                      Manage your campus efficiently. Keep everything under control.
                     </p>
-                    <div className="flex items-center space-x-2 text-slate-300 text-xs mt-3">
-                      <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                    <div className="flex items-center space-x-2 text-slate-300 text-xs mt-3 bg-white/10 backdrop-blur-xs w-fit px-3 py-1 rounded-full border border-white/10">
+                      <Calendar className="w-3.5 h-3.5 text-sky-400" />
                       <span>{currentDateTime}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/40 shadow-lg text-slate-800 self-start md:self-auto">
-                    <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <div className="flex items-center space-x-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/40 shadow-lg text-slate-800 self-start md:self-auto">
+                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                       <Building className="w-5 h-5" />
                     </div>
-                    <div>
-                      <p className="text-xs font-black text-slate-900 leading-tight">Raajdhani Engineering College (Autonomous)</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-slate-900 leading-tight truncate">
+                        Raajdhani Engineering College
+                      </p>
                       <p className="text-[10px] text-slate-500 font-medium">Bhubaneswar, Odisha</p>
                     </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </div>
               </div>
 
-              {/* Prominent Pending Admissions Notification Banner */}
+              {/* Prominent Pending Admissions Notification Banner (Preserved for Instant Alert) */}
               {pendingStudents.length > 0 && (
                 <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white p-4 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
                   <div className="flex items-center space-x-3">
@@ -1117,951 +1178,880 @@ function AdminPortalContent({
                 </div>
               )}
 
-              {/* 16 Campus Overview Stat Cards (Organized Grid with Click-to-Module Navigation) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {/* 2. Top KPI Cards (Exact 7 KPI Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                 {/* 1. Total Students */}
                 <div
                   onClick={() => { setActiveTab('STUDENTS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-blue-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                      <Users className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Total Students</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Total Students</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">2,485</h3>
-                    <p className="text-[9px] text-emerald-600 font-semibold truncate">↑ 5% this term</p>
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">2,485</h3>
+                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">↑ +12 this month</p>
                   </div>
                 </div>
 
-                {/* 2. Active Students */}
-                <div
-                  onClick={() => { setActiveTab('STUDENTS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Active Students</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">2,410</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Enrolled & Valid</p>
-                  </div>
-                </div>
-
-                {/* 3. Faculty & Staff */}
-                <div
-                  onClick={() => { setActiveTab('STAFF_ROLES'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-teal-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-                      <GraduationCap className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Faculty & Staff</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">182</h3>
-                    <p className="text-[9px] text-emerald-600 font-semibold truncate">All blocks active</p>
-                  </div>
-                </div>
-
-                {/* 4. Hostel Occupancy */}
+                {/* 2. Hostel Occupancy (Circular SVG Ring) */}
                 <div
                   onClick={() => { setActiveTab('HOSTEL'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-indigo-400 transition cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-emerald-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                      <Bed className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                      <Bed className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Hostel Occupancy</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Hostel Occupancy</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">78%</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">1,237 / 1,580</p>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">78%</h3>
+                      <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">1,237 / 1,580</p>
+                    </div>
+                    {/* Circular SVG Ring */}
+                    <div className="relative w-8 h-8 shrink-0">
+                      <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          className="text-slate-100"
+                          strokeWidth="3.5"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path
+                          className="text-blue-600"
+                          strokeDasharray="78, 100"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
-                {/* 5. Students Inside */}
+                {/* 3. Students Inside */}
                 <div
-                  onClick={() => { setActiveTab('SECURITY'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-emerald-400 transition cursor-pointer"
+                  onClick={() => router.push('/admin/security')}
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-amber-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                      <Shield className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                      <Home className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Students Inside</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Students Inside</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-emerald-700 tracking-tight">2,342</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">96% on campus</p>
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">2,342</h3>
+                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">96% on campus</p>
                   </div>
                 </div>
 
-                {/* 6. Students Outside */}
-                <div
-                  onClick={() => { setActiveTab('SECURITY'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-                      <Clock className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Students Outside</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-blue-700 tracking-tight">98</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Active gate pass</p>
-                  </div>
-                </div>
-
-                {/* 7. Students On Leave */}
-                <div
-                  onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-purple-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                      <FileText className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">On Home Leave</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">45</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Authorized leave</p>
-                  </div>
-                </div>
-
-                {/* 8. Pending Leave Requests */}
+                {/* 4. Active Gate Passes */}
                 <div
                   onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-amber-400 transition cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-purple-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                      <Clock className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                      <Ticket className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Pending Leave</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Active Gate Passes</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-amber-700 tracking-tight">18</h3>
-                    <p className="text-[9px] text-amber-600 font-semibold truncate">Warden review</p>
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">34</h3>
+                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">↑ +6 today</p>
                   </div>
                 </div>
 
-                {/* 9. Active Gate Passes */}
-                <div
-                  onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-indigo-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                      <FileText className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Active Passes</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">34</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">QR generated</p>
-                  </div>
-                </div>
-
-                {/* 10. Pending Complaints */}
+                {/* 5. Pending Complaints */}
                 <div
                   onClick={() => { setActiveTab('GRIEVANCES'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-rose-400 transition cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-rose-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Complaints</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Pending Complaints</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-rose-700 tracking-tight">
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">
                       {complaints.filter((c) => c.status === 'RAISED').length || 24}
                     </h3>
-                    <p className="text-[9px] text-rose-600 font-semibold truncate">Awaiting resolution</p>
+                    <p className="text-[10px] text-rose-600 font-bold truncate mt-0.5">↓ 5 new</p>
                   </div>
                 </div>
 
-                {/* 11. Open Service Requests */}
+                {/* 6. Medical Cases */}
                 <div
-                  onClick={() => { setActiveTab('SERVICES'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-purple-400 transition cursor-pointer"
+                  onClick={() => router.push('/admin/medical')}
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-teal-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                      <Wrench className="w-3.5 h-3.5" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+                      <HeartPulse className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Service Orders</p>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Medical Cases</p>
                   </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-purple-700 tracking-tight">14</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Technicians on task</p>
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">8</h3>
+                    <p className="text-[10px] text-rose-500 font-bold truncate mt-0.5">2 critical</p>
                   </div>
                 </div>
 
-                {/* 12. Medical Cases */}
-                <div
-                  onClick={() => { setActiveTab('MEDICAL'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-rose-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                      <Heart className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Medical Cases</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">8</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">OPD & Bed rest</p>
-                  </div>
-                </div>
-
-                {/* 13. Emergency Alerts */}
+                {/* 7. Emergency Alerts */}
                 <div
                   onClick={() => { setActiveTab('EMERGENCY'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-red-400 transition cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-indigo-400 transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                      <ShieldAlert className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Emergency Alerts</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">0</h3>
-                    <p className="text-[9px] text-emerald-600 font-semibold truncate">All quiet • Safe</p>
-                  </div>
-                </div>
-
-                {/* 14. Visitors Today */}
-                <div
-                  onClick={() => { setActiveTab('VISITORS'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-indigo-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                      <UserCheck className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Visitors Today</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">12</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Passes issued</p>
-                  </div>
-                </div>
-
-                {/* 15. Security Incidents */}
-                <div
-                  onClick={() => { setActiveTab('SECURITY'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-amber-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Incidents</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-amber-700 tracking-tight">1</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Late return curfew</p>
-                  </div>
-                </div>
-
-                {/* 16. Maintenance Issues */}
-                <div
-                  onClick={() => { setActiveTab('SERVICES'); setActiveSubTab(''); }}
-                  className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs hover:border-purple-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                      <Wrench className="w-3.5 h-3.5" />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">Maintenance</p>
-                  </div>
-                  <div className="mt-1.5">
-                    <h3 className="text-lg font-black text-slate-900 tracking-tight">6</h3>
-                    <p className="text-[9px] text-slate-400 font-medium truncate">Preventive tasks</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3-Column Middle Dashboard Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                {/* COLUMN 1: Hostel Occupancy & Student Trend (Col 1-3) */}
-                <div className="lg:col-span-3 space-y-4">
-                  {/* Card 1: Hostel Occupancy Overview */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                    <h3 className="text-xs font-black text-slate-900">Hostel Occupancy Overview</h3>
-
-                    <div className="flex items-center justify-center relative py-2">
-                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="38" stroke="#f1f5f9" strokeWidth="12" fill="none" />
-                        {/* 78% occupied: 0.78 * 238.76 = 186.2 */}
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="38"
-                          stroke="#2563eb"
-                          strokeWidth="12"
-                          fill="none"
-                          strokeDasharray="186.2 238.8"
-                        />
-                        {/* 22% vacant: 0.22 * 238.76 = 52.5 */}
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="38"
-                          stroke="#10b981"
-                          strokeWidth="12"
-                          fill="none"
-                          strokeDasharray="52.5 238.8"
-                          strokeDashoffset="-186.2"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-lg font-black text-slate-900 leading-none">78%</span>
-                        <span className="text-[9px] font-bold text-slate-400 mt-0.5">Occupied</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1 border-t border-slate-100 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-slate-600">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                          <span className="text-[11px] font-medium">Occupied</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">1,237</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-slate-600">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                          <span className="text-[11px] font-medium">Vacant</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">343</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-slate-600">
-                          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-                          <span className="text-[11px] font-medium">Maintenance</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">0</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                        <span className="flex items-center space-x-1.5 text-slate-500 font-bold text-[11px]">
-                          Total Rooms
-                        </span>
-                        <span className="font-black text-slate-900 text-[11px]">1,580</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Student & Hostel Trend */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black text-slate-900">Student & Hostel Trend</h3>
-                      <div className="flex items-center space-x-2 text-[8px] font-bold">
-                        <span className="flex items-center space-x-1 text-blue-600">
-                          <span className="w-2 h-2 rounded-full bg-blue-600" />
-                          <span>Students</span>
-                        </span>
-                        <span className="flex items-center space-x-1 text-emerald-600">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span>Occupancy</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative pt-2">
-                      <svg className="w-full h-32" viewBox="0 0 320 120" preserveAspectRatio="none">
-                        <line x1="25" y1="20" x2="295" y2="20" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                        <line x1="25" y1="50" x2="295" y2="50" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                        <line x1="25" y1="80" x2="295" y2="80" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                        <line x1="25" y1="105" x2="295" y2="105" stroke="#e2e8f0" strokeWidth="1" />
-
-                        <text x="5" y="23" fill="#94a3b8" fontSize="7">2.5K</text>
-                        <text x="5" y="53" fill="#94a3b8" fontSize="7">1.5K</text>
-                        <text x="5" y="83" fill="#94a3b8" fontSize="7">500</text>
-                        <text x="5" y="107" fill="#94a3b8" fontSize="7">0</text>
-
-                        <text x="300" y="23" fill="#94a3b8" fontSize="7">100%</text>
-                        <text x="300" y="53" fill="#94a3b8" fontSize="7">50%</text>
-                        <text x="300" y="83" fill="#94a3b8" fontSize="7">25%</text>
-                        <text x="300" y="107" fill="#94a3b8" fontSize="7">0%</text>
-
-                        <defs>
-                          <linearGradient id="studentTrendGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
-                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M 30,85 Q 70,75 110,65 T 180,45 T 250,30 T 290,20 L 290,105 L 30,105 Z"
-                          fill="url(#studentTrendGrad)"
-                        />
-                        <path
-                          d="M 30,85 Q 70,75 110,65 T 180,45 T 250,30 T 290,20"
-                          fill="none"
-                          stroke="#2563eb"
-                          strokeWidth="2"
-                        />
-                        <circle cx="30" cy="85" r="2" fill="#2563eb" stroke="#fff" />
-                        <circle cx="110" cy="65" r="2" fill="#2563eb" stroke="#fff" />
-                        <circle cx="180" cy="45" r="2" fill="#2563eb" stroke="#fff" />
-                        <circle cx="250" cy="30" r="2" fill="#2563eb" stroke="#fff" />
-                        <circle cx="290" cy="20" r="2" fill="#2563eb" stroke="#fff" />
-
-                        <path
-                          d="M 30,95 Q 70,90 110,88 T 180,82 T 250,80 T 290,78"
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth="2"
-                        />
-                        <circle cx="30" cy="95" r="2" fill="#10b981" stroke="#fff" />
-                        <circle cx="110" cy="88" r="2" fill="#10b981" stroke="#fff" />
-                        <circle cx="180" cy="82" r="2" fill="#10b981" stroke="#fff" />
-                        <circle cx="290" cy="78" r="2" fill="#10b981" stroke="#fff" />
-                      </svg>
-
-                      <div className="flex justify-between px-2 text-[8px] font-semibold text-slate-400 mt-1">
-                        <span>23 Sep</span>
-                        <span>24 Sep</span>
-                        <span>25 Sep</span>
-                        <span>26 Sep</span>
-                        <span>27 Sep</span>
-                        <span>28 Sep</span>
-                        <span>29 Sep</span>
-                        <span>30 Sep</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* COLUMN 2: Activities, Quick Actions, Notice Board & Events (Col 4-9) */}
-                <div className="lg:col-span-6 space-y-4">
-                  {/* Row A: Recent Activities & Quick Actions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Recent Activities */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-900">Recent Activities</h3>
-                        <button
-                          onClick={() => setActiveTab('AUDIT_LOGS')}
-                          className="text-[10px] font-bold text-blue-600 hover:underline"
-                        >
-                          View All →
-                        </button>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-xs py-0.5">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                              <FileText className="w-3.5 h-3.5" />
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-800 truncate">
-                              New leave request from Rahul Kumar (Hostel B)
-                            </p>
-                          </div>
-                          <span className="text-[9px] text-slate-400 shrink-0 ml-1">2 hours ago</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs py-0.5">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-800 truncate">
-                              Grievance #GRV-124 resolved
-                            </p>
-                          </div>
-                          <span className="text-[9px] text-slate-400 shrink-0 ml-1">3 hours ago</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs py-0.5">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                              <Bell className="w-3.5 h-3.5" />
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-800 truncate">
-                              Notice published: Semester Exam Schedule
-                            </p>
-                          </div>
-                          <span className="text-[9px] text-slate-400 shrink-0 ml-1">4 hours ago</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs py-0.5">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                              <Users className="w-3.5 h-3.5" />
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-800 truncate">
-                              New student registered: Priya Sahu
-                            </p>
-                          </div>
-                          <span className="text-[9px] text-slate-400 shrink-0 ml-1">5 hours ago</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs py-0.5">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                              <Shield className="w-3.5 h-3.5" />
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-800 truncate">
-                              Gate pass verified at Main Gate
-                            </p>
-                          </div>
-                          <span className="text-[9px] text-slate-400 shrink-0 ml-1">6 hours ago</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Actions (6 Colorful Tiles) */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-900">Quick Actions</h3>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <button
-                          onClick={() => setActiveTab('STUDENTS')}
-                          className="p-3 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <UserPlus className="w-5 h-5 text-blue-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">Add Student</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveTab('ANNOUNCEMENTS')}
-                          className="p-3 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <Megaphone className="w-5 h-5 text-emerald-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">Publish Notice</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveTab('ANNOUNCEMENTS')}
-                          className="p-3 rounded-xl bg-purple-50/80 hover:bg-purple-100 border border-purple-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <Calendar className="w-5 h-5 text-purple-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">Create Event</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveTab('APPROVALS')}
-                          className="p-3 rounded-xl bg-rose-50/80 hover:bg-rose-100 border border-rose-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <AlertTriangle className="w-5 h-5 text-rose-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">Manage Grievances</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveTab('SERVICES')}
-                          className="p-3 rounded-xl bg-amber-50/80 hover:bg-amber-100 border border-amber-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <Utensils className="w-5 h-5 text-amber-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">Update Mess Menu</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveTab('REPORTS')}
-                          className="p-3 rounded-xl bg-teal-50/80 hover:bg-teal-100 border border-teal-100 flex flex-col items-center justify-center text-center transition cursor-pointer"
-                        >
-                          <TrendingUp className="w-5 h-5 text-teal-600 mb-1" />
-                          <span className="text-[10px] font-black text-slate-800">View Reports</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row B: Notice Board & Upcoming Events */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Notice Board */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-900">Notice Board</h3>
-                        <button
-                          onClick={() => setActiveTab('ANNOUNCEMENTS')}
-                          className="text-[10px] font-bold text-blue-600 hover:underline"
-                        >
-                          View All →
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-start space-x-2">
-                          <Pin className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[11px] font-bold text-slate-900 truncate">
-                                Important: Semester Exam schedule 2025
-                              </p>
-                              <span className="text-[8px] font-bold bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full shrink-0 ml-1">
-                                Pinned &gt;
-                              </span>
-                            </div>
-                            <p className="text-[9px] text-slate-400 mt-0.5">29 Sep 2025</p>
-                          </div>
-                        </div>
-
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-start space-x-2">
-                          <Building className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-slate-900 truncate">
-                              College will remain closed on 2nd Oct 2025 (Gandhi Jayanti)
-                            </p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">28 Sep 2025</p>
-                          </div>
-                        </div>
-
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-start space-x-2">
-                          <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-slate-900 truncate">
-                              Tech Fest 2025 – Registration Open
-                            </p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">26 Sep 2025</p>
-                          </div>
-                        </div>
-
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-start space-x-2">
-                          <Utensils className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-slate-900 truncate">
-                              Hostel Mess Menu Updated
-                            </p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">24 Sep 2025</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Upcoming Events */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-900">Upcoming Events</h3>
-                        <button
-                          onClick={() => setActiveTab('ANNOUNCEMENTS')}
-                          className="text-[10px] font-bold text-blue-600 hover:underline"
-                        >
-                          View All →
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="p-2.5 rounded-xl border border-slate-200 bg-white border-l-4 border-l-rose-500 shadow-2xs">
-                          <h4 className="text-[11px] font-bold text-slate-900 truncate">Tech Fest 2025</h4>
-                          <p className="text-[10px] text-slate-500">02 Oct 2025</p>
-                          <p className="text-[9px] text-slate-400">Main Auditorium</p>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl border border-slate-200 bg-white border-l-4 border-l-purple-500 shadow-2xs">
-                          <h4 className="text-[11px] font-bold text-slate-900 truncate">Cultural Fest</h4>
-                          <p className="text-[10px] text-slate-500">16 Oct 2025</p>
-                          <p className="text-[9px] text-slate-400">College Ground</p>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl border border-slate-200 bg-white border-l-4 border-l-blue-500 shadow-2xs">
-                          <h4 className="text-[11px] font-bold text-slate-900 truncate">Workshop on Career Guidance</h4>
-                          <p className="text-[10px] text-slate-500">25 Oct 2025</p>
-                          <p className="text-[9px] text-slate-400">Seminar Hall</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* COLUMN 3: College Info, Quick Stats, System Status (Col 10-12) */}
-                <div className="lg:col-span-3 space-y-4">
-                  {/* Card 1: College Information */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Building className="w-4 h-4 text-blue-600" />
-                      <h3 className="text-xs font-black text-slate-900">College Information</h3>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
-                        Raajdhani Engineering College (Autonomous)
-                      </h4>
-                      <p className="text-[10px] text-slate-500 flex items-center space-x-1 mt-1">
-                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>Bhubaneswar, Odisha</span>
-                      </p>
-                    </div>
-
-                    <div className="space-y-1.5 text-[10px] text-slate-600 pt-1 border-t border-slate-100">
-                      <p className="flex items-center space-x-2">
-                        <PhoneCall className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>+91 674 2751 017</span>
-                      </p>
-                      <p className="flex items-center space-x-2 truncate">
-                        <span className="w-3 h-3 text-slate-400 flex items-center justify-center shrink-0">@</span>
-                        <span className="truncate">info@rec.ac.in</span>
-                      </p>
-                      <p className="flex items-center space-x-2">
-                        <Globe className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="text-blue-600">www.rec.ac.in</span>
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl overflow-hidden border border-slate-200 mt-2">
-                      <img
-                        src="/images/rec-building.jpg"
-                        alt="REC Campus"
-                        loading="lazy"
-                        className="w-full h-24 object-cover object-center"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Card 2: Quick Stats */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Activity className="w-4 h-4 text-blue-600" />
-                      <h3 className="text-xs font-black text-slate-900">Quick Stats</h3>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <Building className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Hostels</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">6</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Departments</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">12</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <Bed className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Total Rooms</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">1,580</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <Users className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Warden</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">6</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <Shield className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Security Guards</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">18</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="flex items-center space-x-2">
-                          <Heart className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-[11px]">Medical Staff</span>
-                        </span>
-                        <span className="font-bold text-slate-900 text-[11px]">4</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 3: System Status */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <h3 className="text-xs font-black text-slate-900">System Status</h3>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="text-[11px] text-slate-600">Server</span>
-                        </span>
-                        <span className="text-[11px] font-bold text-emerald-600">Online</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="text-[11px] text-slate-600">Database</span>
-                        </span>
-                        <span className="text-[11px] font-bold text-emerald-600">Connected</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="text-[11px] text-slate-600">All Services Running</span>
-                        </span>
-                        <span className="text-[11px] font-bold text-emerald-600">✓</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hackathon Grievance & SLA Intelligence Widget */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                      <Activity className="w-4 h-4 text-blue-600" />
-                      <span>Hackathon Analytics & Grievance Intelligence</span>
-                    </h3>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Real-time complaint ageing, recurring issues & staff workload SLA
-                    </p>
-                  </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-bold border border-blue-200">
-                      Avg Resolution: {DASHBOARD_MOCK.avgResolutionHours} hrs ({DASHBOARD_MOCK.avgResolutionTrend})
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-4 h-4" />
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-600 truncate">Emergency Alerts</p>
+                  </div>
+                  <div className="mt-2">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">0</h3>
+                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">All safe</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Main Section: Campus Operations — Role Based Access (4 Large Cards) */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Campus Operations — Role Based Access
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Quick access to your assigned modules and pending tasks.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4.5">
+                  {/* CARD 1: WARDEN (Green Theme) */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div>
+                      {/* Top Row: Icon + Vector Illustration */}
+                      <div className="flex items-start justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        {/* Custom Vector Illustration of Hostel Building */}
+                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
+                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
+                            <rect x="25" y="20" width="70" height="52" rx="3" fill="#E0F2FE" stroke="#0284C7" strokeWidth="1.5" />
+                            <path d="M20 20L60 4L100 20H20Z" fill="#0284C7" />
+                            <rect x="33" y="27" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="47" y="27" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="65" y="27" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="79" y="27" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="33" y="43" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="79" y="43" width="8" height="10" rx="1" fill="#0369A1" />
+                            <rect x="52" y="45" width="16" height="27" rx="1" fill="#0369A1" />
+                            <line x1="60" y1="45" x2="60" y2="72" stroke="#BAE6FD" strokeWidth="1.5" />
+                            <circle cx="12" cy="50" r="10" fill="#10B981" />
+                            <rect x="10" y="55" width="4" height="17" fill="#78350F" />
+                            <circle cx="108" cy="50" r="10" fill="#10B981" />
+                            <rect x="106" y="55" width="4" height="17" fill="#78350F" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <h4 className="text-base font-black text-slate-900 leading-tight">
+                          Warden Platform
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Manage hostel, students and wardens
+                        </p>
+                      </div>
+
+                      {/* Feature Checklist */}
+                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Hostel Management</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Student List & Allocation</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Leave & Gate Pass Approval</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Warden & Staff Management</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Hostel Complaints</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-6 pt-2">
+                      <button
+                        onClick={() => router.push('/admin/warden')}
+                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>View Dashboard</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CARD 2: SERVICE (Orange Theme) */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-amber-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div>
+                      {/* Top Row: Icon + Vector Illustration */}
+                      <div className="flex items-start justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25">
+                          <Wrench className="w-5 h-5" />
+                        </div>
+                        {/* Custom Vector Illustration of Maintenance Worker */}
+                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
+                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
+                            <circle cx="70" cy="20" r="10" fill="#F59E0B" />
+                            <path d="M60 14Q70 9 82 14L86 16L82 18H60Z" fill="#D97706" />
+                            <path d="M52 42C52 32 60 28 70 28C80 28 88 32 88 42L84 72H56L52 42Z" fill="#F59E0B" />
+                            <path d="M60 40V68H80V40H60Z" fill="#D97706" />
+                            <path d="M86 48L102 34C104 32 108 32 110 34C112 36 112 40 110 42L94 56L86 48Z" fill="#94A3B8" />
+                            <circle cx="106" cy="38" r="3" fill="#FFFFFF" />
+                            <circle cx="28" cy="38" r="15" fill="#FFEDD5" stroke="#F97316" strokeWidth="2.5" strokeDasharray="5 3" />
+                            <circle cx="28" cy="38" r="6" fill="#F97316" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <h4 className="text-base font-black text-slate-900 leading-tight">
+                          Service Platform
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Maintenance & facility support
+                        </p>
+                      </div>
+
+                      {/* Feature Checklist */}
+                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Service Requests</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Maintenance Tracking</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Room & Campus Facilities</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Staff Management</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Issue Resolution</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-6 pt-2">
+                      <button
+                        onClick={() => router.push('/admin/service')}
+                        className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>View Dashboard</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CARD 3: SECURITY (Purple Theme) */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div>
+                      {/* Top Row: Icon + Vector Illustration */}
+                      <div className="flex items-start justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25">
+                          <Shield className="w-5 h-5" />
+                        </div>
+                        {/* Custom Vector Illustration of Security Officer & CCTV */}
+                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
+                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
+                            <circle cx="48" cy="22" r="9" fill="#6366F1" />
+                            <path d="M36 17C36 13 42 11 48 11C54 11 60 13 60 17L62 19H34L36 17Z" fill="#312E81" />
+                            <rect x="42" y="18" width="12" height="2" fill="#E0E7FF" />
+                            <path d="M34 40C34 32 40 28 48 28C56 28 62 32 62 40L60 72H36L34 40Z" fill="#4338CA" />
+                            <path d="M46 30H50V70H46V30Z" fill="#E0E7FF" />
+                            <rect x="80" y="24" width="22" height="11" rx="2.5" fill="#312E81" transform="rotate(-15 80 24)" />
+                            <circle cx="98" cy="18" r="3.5" fill="#06B6D4" />
+                            <path d="M78 29L72 33" stroke="#6366F1" strokeWidth="2.5" />
+                            <rect x="70" y="32" width="3.5" height="12" fill="#312E81" />
+                            <path d="M98 26C103 29 106 34 106 40" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" strokeDasharray="2 2" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <h4 className="text-base font-black text-slate-900 leading-tight">
+                          Security Platform
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Campus safety & access control
+                        </p>
+                      </div>
+
+                      {/* Feature Checklist */}
+                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Gate Pass Management</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Visitor Management</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Security Staff</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Incident Reports</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Emergency Response</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-6 pt-2">
+                      <button
+                        onClick={() => router.push('/admin/security')}
+                        className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>View Dashboard</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CARD 4: MEDICAL (Red Theme) */}
+                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-rose-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div>
+                      {/* Top Row: Icon + Vector Illustration */}
+                      <div className="flex items-start justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25">
+                          <HeartPulse className="w-5 h-5" />
+                        </div>
+                        {/* Custom Vector Illustration of Medical Doctor */}
+                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
+                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
+                            <circle cx="68" cy="22" r="9" fill="#FB7185" />
+                            <path d="M58 20C58 14 64 10 72 10C80 10 84 16 84 22C84 22 80 18 72 18C64 18 60 21 58 20Z" fill="#4C0519" />
+                            <path d="M54 42C54 34 60 30 70 30C80 30 86 34 86 42L84 72H56L54 42Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1" />
+                            <path d="M64 32L69 44L74 32H64Z" fill="#38BDF8" />
+                            <path d="M60 34Q60 48 68 50Q76 48 76 34" stroke="#475569" strokeWidth="2" fill="none" />
+                            <circle cx="68" cy="52" r="3" fill="#94A3B8" />
+                            <circle cx="28" cy="38" r="12" fill="#FFE4E6" stroke="#F43F5E" strokeWidth="2" />
+                            <rect x="26" y="32" width="4" height="12" rx="1" fill="#E11D48" />
+                            <rect x="22" y="36" width="12" height="4" rx="1" fill="#E11D48" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <h4 className="text-base font-black text-slate-900 leading-tight">
+                          Medical Platform
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Health care & emergency support
+                        </p>
+                      </div>
+
+                      {/* Feature Checklist */}
+                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Medical Records</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Health Center Patients</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Emergency Alerts</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Ambulance & Referral</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
+                          <span className="font-medium">Health Reports</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-6 pt-2">
+                      <button
+                        onClick={() => router.push('/admin/medical')}
+                        className="w-full py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>View Dashboard</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Essential Quick Actions Bar */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+                <span className="text-xs font-black text-slate-900 uppercase tracking-wider px-2">
+                  Quick Actions:
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => { setActiveTab('STUDENTS'); setActiveSubTab(''); }}
+                    className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Add Student</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab('Leave Requests'); }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Approve Leave</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab('Gate Passes'); }}
+                    className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Ticket className="w-3.5 h-3.5" />
+                    <span>Approve Gate Pass</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/service')}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>Create Service Request</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('NOTICES'); setActiveSubTab(''); }}
+                    className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Megaphone className="w-3.5 h-3.5" />
+                    <span>Publish Notice</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('EMERGENCY'); setActiveSubTab(''); }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>View Emergency Alerts</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom Dashboard: 3 Clean Columns (Recent Activities, Important Alerts, Upcoming/Pending Tasks) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* 1. RECENT ACTIVITIES */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Recent Activities</h3>
+                        <p className="text-[10px] text-slate-400 font-medium">Real-time operational stream</p>
+                      </div>
+                    </div>
+                    <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Live Feed</span>
                     </span>
                   </div>
+
+                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
+                    {/* Activity 1 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Leave request received</p>
+                          <span className="text-[10px] text-slate-400 font-medium">5m ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">Amit Sharma (CSE - Block A) · Room 204</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60">Warden Approval Required</span>
+                      </div>
+                    </div>
+
+                    {/* Activity 2 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <Ticket className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Gate pass approved</p>
+                          <span className="text-[10px] text-slate-400 font-medium">14m ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">Priya Patel (Pass #GP-8841) · Weekend Outing</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200/60">Main Gate Verified</span>
+                      </div>
+                    </div>
+
+                    {/* Activity 3 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <Wrench className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Complaint submitted</p>
+                          <span className="text-[10px] text-slate-400 font-medium">32m ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">Water leakage in Block B, 3rd Floor Washroom</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/60">Grievance Desk</span>
+                      </div>
+                    </div>
+
+                    {/* Activity 4 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <Wrench className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Service request created</p>
+                          <span className="text-[10px] text-slate-400 font-medium">1h ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">AC repair in Computer Lab 4 · Assigned to Ramesh</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-orange-50 text-orange-700 border border-orange-200/60">Facility Maintenance</span>
+                      </div>
+                    </div>
+
+                    {/* Activity 5 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <Shield className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Security incident resolved</p>
+                          <span className="text-[10px] text-slate-400 font-medium">2h ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">Visitor ID mismatch cleared at North Gate</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">Security Desk</span>
+                      </div>
+                    </div>
+
+                    {/* Activity 6 */}
+                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <HeartPulse className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 truncate">Medical case registered</p>
+                          <span className="text-[10px] text-slate-400 font-medium">3h ago</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">First aid administered at Campus Health Centre</p>
+                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200/60">Medical Care</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTab('AUDIT_LOGS')}
+                    className="mt-3 w-full py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                  >
+                    <span>View All Activity Logs</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                  {/* 1. Complaint Ageing */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <p className="text-[11px] font-bold text-slate-700">Complaint Ageing Distribution</p>
-                    <div className="space-y-1.5">
-                      {DASHBOARD_MOCK.complaintAgeing.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-[10px] text-slate-600 font-medium">{item.range}</span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                              item.isCritical
-                                ? 'bg-rose-100 text-rose-700 font-black ring-1 ring-rose-300'
-                                : 'bg-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {item.count} tickets
-                          </span>
-                        </div>
-                      ))}
+                {/* 2. IMPORTANT ALERTS */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Important Alerts</h3>
+                        <p className="text-[10px] text-slate-400 font-medium">Urgent attention & escalations</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/60">
+                      5 Active
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
+                    {/* Alert 1 */}
+                    <div className="p-3 rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50/70 transition space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center space-x-1.5 text-rose-800 text-xs font-bold">
+                          <HeartPulse className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Medical emergency triage</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">Critical</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">Health Centre logged severe dehydration (Room 112). Physician on duty notified.</p>
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-medium">Health Centre · 12m ago</span>
+                        <button
+                          onClick={() => { setActiveTab('MEDICAL'); router.push('/admin/medical'); }}
+                          className="text-[11px] font-bold text-rose-700 hover:text-rose-900 flex items-center space-x-0.5 cursor-pointer"
+                        >
+                          <span>Review Case</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Alert 2 */}
+                    <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/40 hover:bg-amber-50/70 transition space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center space-x-1.5 text-amber-800 text-xs font-bold">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Unauthorized entry attempt</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">Security</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">Unregistered vehicle flagged at South Gate #2. Guard on site verified guest pass.</p>
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-medium">Security · 28m ago</span>
+                        <button
+                          onClick={() => { setActiveTab('SECURITY'); router.push('/admin/security'); }}
+                          className="text-[11px] font-bold text-amber-700 hover:text-amber-900 flex items-center space-x-0.5 cursor-pointer"
+                        >
+                          <span>Check Gate</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Alert 3 */}
+                    <div className="p-3 rounded-xl border border-blue-200/80 bg-blue-50/40 hover:bg-blue-50/70 transition space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center space-x-1.5 text-blue-800 text-xs font-bold">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Pending leave approvals</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">12 Pending</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">12 weekend outstation leave applications awaiting chief warden authorization.</p>
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-medium">Hostel Desk · 45m ago</span>
+                        <button
+                          onClick={() => { setActiveTab('LEAVE_GATE_PASS'); }}
+                          className="text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center space-x-0.5 cursor-pointer"
+                        >
+                          <span>Approve All</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Alert 4 */}
+                    <div className="p-3 rounded-xl border border-orange-200/80 bg-orange-50/40 hover:bg-orange-50/70 transition space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center space-x-1.5 text-orange-800 text-xs font-bold">
+                          <Wrench className="w-3.5 h-3.5 text-orange-600" />
+                          <span>Critical maintenance issue</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-800">Service</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">Main water pump pressure dropped in Boys Hostel Block C. Plumber team assigned.</p>
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-medium">Facility · 1h ago</span>
+                        <button
+                          onClick={() => { setActiveTab('SERVICES'); router.push('/admin/service'); }}
+                          className="text-[11px] font-bold text-orange-700 hover:text-orange-900 flex items-center space-x-0.5 cursor-pointer"
+                        >
+                          <span>Track Ticket</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* 2. Top Recurring Issues */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <p className="text-[11px] font-bold text-slate-700">Top 3 Recurring Issues</p>
-                    <div className="space-y-1.5">
-                      {DASHBOARD_MOCK.repeatIssues.map((issue, i) => (
-                        <div key={i} className="text-xs">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-bold text-slate-800 truncate max-w-[170px]">
-                              {issue.title}
-                            </p>
-                            <span className="text-[9px] font-black text-blue-600">{issue.occurrences}x</span>
-                          </div>
-                          <p className="text-[9px] text-slate-400">{issue.category}</p>
+                  <button
+                    onClick={() => { setActiveTab('EMERGENCY'); }}
+                    className="mt-3 w-full py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Open Emergency Center</span>
+                  </button>
+                </div>
+
+                {/* 3. UPCOMING / PENDING TASKS */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <ListTodo className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Upcoming / Pending Tasks</h3>
+                        <p className="text-[10px] text-slate-400 font-medium">Priority action list for today</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200/60">
+                      5 Tasks
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
+                    {/* Task 1 */}
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-blue-300 transition flex items-center justify-between gap-2.5">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-blue-600 cursor-pointer">
+                          <Check className="w-3 h-3" />
                         </div>
-                      ))}
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800">Review leave requests</p>
+                          <p className="text-[10px] text-slate-400">12 applications awaiting clearance</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('LEAVE_GATE_PASS')}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                      >
+                        Review
+                      </button>
+                    </div>
+
+                    {/* Task 2 */}
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-emerald-300 transition flex items-center justify-between gap-2.5">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-emerald-600 cursor-pointer">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800">Approve gate passes</p>
+                          <p className="text-[10px] text-slate-400">34 active passes today · Roll call at 7 PM</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('LEAVE_GATE_PASS')}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                    </div>
+
+                    {/* Task 3 */}
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-amber-300 transition flex items-center justify-between gap-2.5">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-amber-600 cursor-pointer">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800">Resolve complaints</p>
+                          <p className="text-[10px] text-slate-400">24 complaints open · 3 marked urgent</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('GRIEVANCES')}
+                        className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                      >
+                        Resolve
+                      </button>
+                    </div>
+
+                    {/* Task 4 */}
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-rose-300 transition flex items-center justify-between gap-2.5">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-rose-600 cursor-pointer">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800">Verify medical cases</p>
+                          <p className="text-[10px] text-slate-400">8 health clinic reports need follow-up</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setActiveTab('MEDICAL'); router.push('/admin/medical'); }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                      >
+                        Verify
+                      </button>
+                    </div>
+
+                    {/* Task 5 */}
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-orange-300 transition flex items-center justify-between gap-2.5">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-orange-600 cursor-pointer">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800">Follow up maintenance</p>
+                          <p className="text-[10px] text-slate-400">5 electrical & plumbing tickets in progress</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setActiveTab('SERVICES'); router.push('/admin/service'); }}
+                        className="px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                      >
+                        Follow Up
+                      </button>
                     </div>
                   </div>
 
-                  {/* 3. Notice Delivery Metrics */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <p className="text-[11px] font-bold text-slate-700">Notice Delivery Rate</p>
-                    <div className="space-y-2">
-                      {DASHBOARD_MOCK.noticeDelivery.slice(0, 2).map((notice, i) => (
-                        <div key={i} className="text-xs space-y-0.5">
-                          <p className="text-[10px] font-bold text-slate-800 truncate">{notice.title}</p>
-                          <div className="flex items-center space-x-2 text-[9px] text-slate-500 font-semibold">
-                            <span className="text-emerald-600">Delivered: {notice.delivered}%</span>
-                            <span className="text-blue-600">Read: {notice.read}%</span>
-                            <span className="text-purple-600">Action: {notice.actionDone}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setActiveTab('CALENDAR')}
+                    className="mt-3 w-full py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                  >
+                    <span>View Campus Schedule</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Bottom Row: Quick Links */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-2">
-                <p className="text-xs font-black text-slate-900">Quick Links</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-                  <button
-                    onClick={() => setActiveTab('SERVICES')}
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-[11px]">Campus Map</span>
-                  </button>
-
-                  <a
-                    href="http://www.rec.ac.in"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-[11px]">College Website</span>
-                  </a>
-
-                  <button
-                    onClick={() => setActiveTab('SERVICES')}
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-[11px]">Library</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('MEDICAL')}
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <Heart className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="text-[11px]">Medical Center</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('SECURITY')}
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
-                    <span className="text-[11px]">Emergency Contacts</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('SETTINGS')}
-                    className="flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-blue-50/60 hover:border-blue-200 text-xs font-bold text-slate-700 transition cursor-pointer"
-                  >
-                    <Headphones className="w-3.5 h-3.5 text-purple-600" />
-                    <span className="text-[11px]">Help & Support</span>
-                  </button>
+              {/* Clean Footer Banner */}
+              <footer className="pt-3 pb-3 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-200/80 gap-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-2xs">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-bold text-slate-800 text-sm">CampusHelper</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-600 font-medium">Safe Campus • Smart Management • Better Tomorrow</span>
                 </div>
-              </div>
-
-              {/* Footer */}
-              <footer className="pt-2 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 border-t border-slate-200/80">
-                <div className="flex items-center space-x-2">
-                  <GraduationCap className="w-4 h-4 text-blue-600" />
-                  <span className="font-bold text-slate-700">Campus Helper</span>
-                  <span>© 2025 Campus Helper. All rights reserved.</span>
+                <div className="flex items-center space-x-3 text-[11px] text-slate-400">
+                  <span className="flex items-center space-x-1.5 font-medium text-emerald-600">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Realtime Connected</span>
+                  </span>
+                  <span>•</span>
+                  <span>Raajdhani Engineering College (REC)</span>
+                  <span>•</span>
+                  <span>v2.4.0</span>
                 </div>
-                <p className="mt-1 sm:mt-0 font-medium">Version 1.0.0 | Developed for a Better Campus Experience</p>
               </footer>
             </div>
           )}
@@ -2100,7 +2090,7 @@ function AdminPortalContent({
           {/* ========================================================= */}
           {/* MODULE 4: HOSTEL MANAGEMENT                               */}
           {/* ========================================================= */}
-          {activeTab === 'HOSTEL' && (
+          {(activeTab === 'HOSTEL' || (activeTab as string) === 'WARDEN') && (
             <HostelManagementView
               activeSubTab={activeSubTab}
               setActiveSubTab={setActiveSubTab}
