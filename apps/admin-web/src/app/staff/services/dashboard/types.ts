@@ -1,6 +1,8 @@
 export type ServiceTab =
   | 'DASHBOARD'
   | 'SERVICE_REQUESTS'
+  | 'REQUEST_HISTORY'
+  | 'NOTIFICATIONS'
   | 'MAINTENANCE'
   | 'ASSIGNED_TASKS'
   | 'COMPLAINTS'
@@ -12,7 +14,10 @@ export type ServiceCategory =
   | 'Electrical'
   | 'Plumbing'
   | 'Cleaning'
+  | 'Sweeper / Cleaning'
+  | 'Sweeper'
   | 'Wi-Fi'
+  | 'Internet / Wi-Fi'
   | 'Water'
   | 'Furniture'
   | 'Room Repair'
@@ -30,6 +35,14 @@ export type ServiceStatus =
   | 'Resolved'
   | 'Student Confirmed'
   | 'Closed';
+
+export interface ServiceTimelineStep {
+  step: string;
+  status: 'PENDING' | 'CURRENT' | 'COMPLETED';
+  timestamp: string;
+  note?: string;
+  actor?: string;
+}
 
 export interface ServiceRequest {
   id: string;
@@ -55,6 +68,25 @@ export interface ServiceRequest {
   completionPhotoUrl?: string;
   studentFeedback?: string;
   rating?: number;
+  timeline?: ServiceTimelineStep[];
+}
+
+export interface StudentNotification {
+  id: string;
+  ticketId?: string;
+  ticketNumber?: string;
+  studentName: string;
+  studentRoll: string;
+  room: string;
+  hostel?: string;
+  category: ServiceCategory;
+  title: string;
+  message: string;
+  photoUrl?: string;
+  timestamp: string;
+  read: boolean;
+  priority?: ServicePriority;
+  type: 'NEW_REQUEST' | 'FEEDBACK' | 'URGENT' | 'STATUS_CONFIRMATION';
 }
 
 export interface MaintenanceScheduleItem {

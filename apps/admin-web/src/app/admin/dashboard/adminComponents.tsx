@@ -43,6 +43,9 @@ import {
   Bed,
   BookOpen,
   Activity,
+  Camera,
+  Star,
+  Bell,
   ArrowRight,
 } from 'lucide-react';
 import {
@@ -57,7 +60,18 @@ import {
   INITIAL_SERVICE_REQUESTS,
   INITIAL_MAINTENANCE_SCHEDULE,
   INITIAL_SERVICE_INVENTORY,
+  INITIAL_STUDENT_NOTIFICATIONS,
 } from '../../staff/services/dashboard/mockData';
+import {
+  ServiceRequest,
+  ServiceCategory,
+  ServiceStatus,
+  StudentNotification,
+} from '../../staff/services/dashboard/types';
+import {
+  CreateServiceTicketModal,
+  TrackStatusModal,
+} from '../../staff/services/dashboard/modals';
 import {
   INITIAL_MEDICAL_REQUESTS,
   INITIAL_APPOINTMENTS,
@@ -944,7 +958,78 @@ export function AdminSecurityManagementView() {
 // 3. SERVICE & MAINTENANCE MONITORING VIEW
 // =========================================================================
 export function AdminServiceMaintenanceView() {
-  const [svcSubTab, setSvcSubTab] = useState<'REQUESTS' | 'MAINTENANCE' | 'INVENTORY'>('REQUESTS');
+  const [svcSubTab, setSvcSubTab] = useState<'REQUESTS' | 'HISTORY' | 'NOTIFICATIONS' | 'MAINTENANCE' | 'INVENTORY'>('REQUESTS');
+  const [requestsList, setRequestsList] = useState<ServiceRequest[]>(INITIAL_SERVICE_REQUESTS);
+  const [notifications, setNotifications] = useState<StudentNotification[]>(INITIAL_STUDENT_NOTIFICATIONS);
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | ServiceCategory>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modals state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTicketForTrack, setSelectedTicketForTrack] = useState<ServiceRequest | null>(null);
+  const [showTrackModal, setShowTrackModal] = useState(false);
+
+  const unreadNotifCount = notifications.filter((n) => !n.read).length;
+
+  const handleCreateTicket = (newT: Partial<ServiceRequest>) => {
+    const fullTicket: ServiceRequest = {
+      id: `sr-${Date.now()}`,
+      ticketNumber: newT.ticketNumber || `SR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      studentName: newT.studentName || 'Student Resident',
+      studentId: 'CS2023042',
+      studentRoll: newT.studentRoll || 'REC-2023-CS042',
+      studentPhone: newT.studentPhone || '+91 98765 43210',
+      hostel: newT.hostel || 'Nilgiri Residence (Block A)',
+      room: newT.room || 'A-204',
+      category: newT.category || 'Plumbing',
+      title: newT.title || 'Service Work Order',
+      description: newT.description || '',
+      photoUrl: newT.photoUrl,
+      priority: newT.priority || 'MEDIUM',
+      assignedStaffName: 'Unassigned (Awaiting Dispatch)',
+      status: 'New',
+      createdTime: 'Just now',
+      updatedTime: 'Just now',
+      slaDue: newT.priority === 'CRITICAL' ? 'Within 2 hours' : 'Within 24 hours',
+    };
+
+    setRequestsList((prev) => [fullTicket, ...prev]);
+
+    // Also push to student notifications
+    const newNotif: StudentNotification = {
+      id: `notif-${Date.now()}`,
+      ticketId: fullTicket.id,
+      ticketNumber: fullTicket.ticketNumber,
+      studentName: fullTicket.studentName,
+      studentRoll: fullTicket.studentRoll,
+      room: fullTicket.room,
+      hostel: fullTicket.hostel,
+      category: fullTicket.category,
+      title: `New ${fullTicket.category} Request: ${fullTicket.title}`,
+      message: fullTicket.description,
+      photoUrl: fullTicket.photoUrl,
+      timestamp: 'Just now',
+      read: false,
+      priority: fullTicket.priority,
+      type: fullTicket.priority === 'CRITICAL' ? 'URGENT' : 'NEW_REQUEST',
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
+  const handleUpdateStatus = (ticketId: string, status: ServiceStatus, notes?: string) => {
+    setRequestsList((prev) =>
+      prev.map((r) =>
+        r.id === ticketId
+          ? {
+              ...r,
+              status,
+              updatedTime: 'Just now',
+              completionNote: notes || r.completionNote,
+            }
+          : r
+      )
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -952,37 +1037,45 @@ export function AdminServiceMaintenanceView() {
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center space-x-2">
-            <Wrench className="w-5 h-5 text-purple-600" />
+            <Wrench className="w-5 h-5 text-amber-600" />
             <h3 className="text-base font-black text-slate-900">Campus Facilities, Maintenance & Services</h3>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+              Live Connected
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Central overview of electrical, plumbing, Wi-Fi, carpentry, and mess operations.
+            Central command for electrical, plumbing, sweeper/cleaning, Internet/Wi-Fi, and furniture maintenance.
           </p>
         </div>
-        <a
-          href="/staff/services/dashboard"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs self-start sm:self-auto cursor-pointer"
-        >
-          <span>Launch Service Hub</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Raise Service Request</span>
+          </button>
+          <a
+            href="/admin/service"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+          >
+            <span>Open Service Platform</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       </div>
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase">Active Work Orders</p>
-          <h4 className="text-2xl font-black text-slate-900 mt-1">{INITIAL_SERVICE_REQUESTS.length}</h4>
-          <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Across all 6 hostels</p>
+          <h4 className="text-2xl font-black text-slate-900 mt-1">{requestsList.length}</h4>
+          <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Across all 6 campus hostels</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase">Critical / High Tickets</p>
-          <h4 className="text-2xl font-black text-rose-600 mt-1">
-            {INITIAL_SERVICE_REQUESTS.filter((r) => r.priority === 'HIGH' || r.priority === 'CRITICAL').length}
-          </h4>
-          <p className="text-[10px] text-rose-500 font-semibold mt-0.5">Require immediate technician dispatch</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase">Student Notifications</p>
+          <h4 className="text-2xl font-black text-rose-600 mt-1">{unreadNotifCount} New</h4>
+          <p className="text-[10px] text-rose-500 font-semibold mt-0.5">Live student alerts pending</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase">Maintenance Tasks</p>
@@ -992,63 +1085,193 @@ export function AdminServiceMaintenanceView() {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase">Spare Parts Inventory</p>
           <h4 className="text-2xl font-black text-emerald-600 mt-1">{INITIAL_SERVICE_INVENTORY.length} Items</h4>
-          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Dispensary & electrical stock</p>
+          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Hardware & electrical stores</p>
         </div>
       </div>
 
       {/* Subtabs Bar */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap gap-2 shadow-2xs">
-        {[
-          { id: 'REQUESTS', label: 'Service Work Orders' },
-          { id: 'MAINTENANCE', label: 'Preventive Maintenance' },
-          { id: 'INVENTORY', label: 'Hardware & Spare Parts' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setSvcSubTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-              svcSubTab === tab.id
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'REQUESTS', label: 'Service Work Orders' },
+            { id: 'HISTORY', label: 'Request History' },
+            { id: 'NOTIFICATIONS', label: `Student Notifications (${unreadNotifCount})` },
+            { id: 'MAINTENANCE', label: 'Preventive Maintenance' },
+            { id: 'INVENTORY', label: 'Hardware & Spare Parts' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSvcSubTab(tab.id as any)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 ${
+                svcSubTab === tab.id
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {tab.id === 'NOTIFICATIONS' && <Bell className="w-3.5 h-3.5" />}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Raise Request</span>
+        </button>
       </div>
 
-      {/* Content */}
+      {/* Main Tab Content */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        {/* 1. SERVICE WORK ORDERS */}
         {svcSubTab === 'REQUESTS' && (
-          <div className="space-y-3">
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Service Work Orders</h4>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Category Pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {['ALL', 'Electrical', 'Plumbing', 'Cleaning', 'Wi-Fi', 'Furniture', 'Water', 'Room Repair', 'Mess'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat as any)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      categoryFilter === cat ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative w-full sm:w-60">
+                <input
+                  type="text"
+                  placeholder="Filter student or ticket..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              </div>
+            </div>
+
             <div className="divide-y divide-slate-100">
-              {INITIAL_SERVICE_REQUESTS.map((req) => (
-                <div key={req.id} className="py-3 flex items-center justify-between text-xs">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono font-bold text-purple-700">{req.ticketNumber}</span>
-                      <span className="font-bold text-slate-900">[{req.category}]</span>
-                      <span className="font-semibold text-slate-700">{req.title}</span>
-                      <span
-                        className={`text-[9px] font-bold px-2 py-0.5 rounded ${
-                          req.priority === 'HIGH' || req.priority === 'CRITICAL'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {req.priority}
-                      </span>
+              {requestsList
+                .filter((r) => {
+                  if (categoryFilter !== 'ALL' && r.category !== categoryFilter) return false;
+                  if (searchQuery && !r.studentName.toLowerCase().includes(searchQuery.toLowerCase()) && !r.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                  return true;
+                })
+                .map((req) => (
+                  <div key={req.id} className="py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                          {req.ticketNumber}
+                        </span>
+                        <span className="font-bold text-slate-900">[{req.category}]</span>
+                        <span className="font-semibold text-slate-800">{req.title}</span>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                            req.priority === 'HIGH' || req.priority === 'CRITICAL'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {req.priority}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Student: <strong className="text-slate-800">{req.studentName}</strong> ({req.hostel} - Room {req.room}) • {req.description}
+                      </p>
+
+                      {/* Photo indicator if attached */}
+                      {req.photoUrl && (
+                        <div
+                          onClick={() => {
+                            setSelectedTicketForTrack(req);
+                            setShowTrackModal(true);
+                          }}
+                          className="inline-flex items-center space-x-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100"
+                        >
+                          <Camera className="w-3 h-3 text-blue-600" />
+                          <span>Photo Attached • Click to View</span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
-                      Student: {req.studentName} ({req.hostel} - {req.room}) • Description: {req.description}
-                    </p>
+
+                    <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
+                        {req.status}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedTicketForTrack(req);
+                          setShowTrackModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Track Status</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* 2. REQUEST HISTORY */}
+        {svcSubTab === 'HISTORY' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div>
+                <h4 className="text-sm font-black text-slate-900">Request History & Audit Log</h4>
+                <p className="text-xs text-slate-400">All historical campus repair tickets, completion notes, and resident ratings.</p>
+              </div>
+              <span className="text-xs font-bold text-slate-500">{requestsList.length} Total Records</span>
+            </div>
+
+            <div className="space-y-3">
+              {requestsList.map((req) => (
+                <div key={req.id} className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-2 text-xs">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="font-mono font-bold text-blue-600 mr-2">{req.ticketNumber}</span>
+                      <span className="font-bold text-slate-800">[{req.category}] {req.title}</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Logged by {req.studentName} ({req.hostel} - Room {req.room}) • {req.createdTime}
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {req.status}
                     </span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Assigned: {req.assignedStaffName || 'Unassigned'}</p>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-100">
+                    {req.description}
+                  </p>
+
+                  {req.completionNote && (
+                    <div className="p-2 rounded-xl bg-emerald-50 text-[10px] text-emerald-800 font-medium">
+                      <strong>Completion Note:</strong> {req.completionNote}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-slate-400">Technician: {req.assignedStaffName}</span>
+                    <button
+                      onClick={() => {
+                        setSelectedTicketForTrack(req);
+                        setShowTrackModal(true);
+                      }}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 cursor-pointer"
+                    >
+                      <span>Track Full Timeline</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1056,6 +1279,79 @@ export function AdminServiceMaintenanceView() {
           </div>
         )}
 
+        {/* 3. STUDENT NOTIFICATIONS */}
+        {svcSubTab === 'NOTIFICATIONS' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div>
+                <h4 className="text-sm font-black text-slate-900">Student Service Notifications</h4>
+                <p className="text-xs text-slate-400">Real-time alerts submitted by students across hostel rooms.</p>
+              </div>
+              <button
+                onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+              >
+                Mark all as seen
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-3.5 rounded-2xl border transition text-xs space-y-2 ${
+                    !notif.read ? 'bg-blue-50/30 border-blue-200 ring-1 ring-blue-100' : 'bg-white border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-2.5">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                        {notif.studentName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-bold text-slate-900">{notif.studentName}</span>
+                          <span className="text-slate-400">({notif.studentRoll})</span>
+                          <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[9px] font-bold">
+                            {notif.category}
+                          </span>
+                        </div>
+                        <p className="font-bold text-slate-800 text-[11px] mt-0.5">{notif.title}</p>
+                        <p className="text-[11px] text-slate-600">{notif.message}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Room {notif.room} • {notif.timestamp}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">{notif.timestamp}</span>
+                  </div>
+
+                  {notif.photoUrl && (
+                    <div className="pl-10">
+                      <img src={notif.photoUrl} alt="Issue photo" className="w-20 h-16 rounded-xl object-cover border border-slate-200" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 pl-10">
+                    <span className="text-[10px] font-bold text-blue-600">{!notif.read ? '● Unread' : 'Seen'}</span>
+                    <button
+                      onClick={() => {
+                        const found = requestsList.find((r) => r.id === notif.ticketId || r.ticketNumber === notif.ticketNumber);
+                        if (found) {
+                          setSelectedTicketForTrack(found);
+                          setShowTrackModal(true);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-[10px] transition cursor-pointer"
+                    >
+                      Track Request
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. PREVENTIVE MAINTENANCE */}
         {svcSubTab === 'MAINTENANCE' && (
           <div className="space-y-3">
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Preventive Maintenance Schedule</h4>
@@ -1080,24 +1376,28 @@ export function AdminServiceMaintenanceView() {
           </div>
         )}
 
+        {/* 5. SPARE PARTS INVENTORY */}
         {svcSubTab === 'INVENTORY' && (
           <div className="space-y-3">
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Spare Parts & Hardware Inventory</h4>
             <div className="divide-y divide-slate-100">
               {INITIAL_SERVICE_INVENTORY.map((item) => (
-                <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
+                <div key={item.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-slate-900">{item.name}</span>
-                    <span className="text-slate-400 ml-2">({item.category})</span>
-                    <p className="text-[10px] text-slate-500">Location: {item.location}</p>
+                    <p className="font-bold text-slate-900">{item.name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      Code: {item.itemCode} • Location: {item.location} • Min Stock: {item.minStock} {item.unit}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <span className="font-black text-slate-900">{item.quantity} {item.unit}</span>
-                    {item.isLowStock && (
-                      <span className="ml-2 text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">
-                        LOW STOCK
-                      </span>
-                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        item.isLowStock ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {item.quantity} {item.unit} {item.isLowStock ? '(Low Stock)' : ''}
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Condition: {item.condition}</p>
                   </div>
                 </div>
               ))}
@@ -1105,13 +1405,24 @@ export function AdminServiceMaintenanceView() {
           </div>
         )}
       </div>
+
+      {/* Modals Suite for Admin Service View */}
+      <CreateServiceTicketModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateTicket={handleCreateTicket}
+      />
+
+      <TrackStatusModal
+        isOpen={showTrackModal}
+        ticket={selectedTicketForTrack}
+        onClose={() => setShowTrackModal(false)}
+        onUpdateStatus={handleUpdateStatus}
+      />
     </div>
   );
 }
 
-// =========================================================================
-// 4. MEDICAL MANAGEMENT MONITORING VIEW
-// =========================================================================
 export function AdminMedicalManagementView() {
   const [medSubTab, setMedSubTab] = useState<'CONSULTATIONS' | 'LEAVE' | 'AMBULANCE' | 'MEDICINES'>('CONSULTATIONS');
 

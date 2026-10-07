@@ -4,6 +4,10 @@ import React, { useState, useEffect } from 'react';
 import RoleGuard from '../../../../components/RoleGuard';
 import {
   Wrench,
+  Camera,
+  ExternalLink,
+  CheckCircle,
+  Inbox,
   Utensils,
   Package,
   Sparkles,
@@ -55,6 +59,7 @@ import {
   ServiceInventoryItem,
   ServiceReportItem,
   ServiceStaffProfile,
+  StudentNotification,
 } from './types';
 
 import {
@@ -63,6 +68,7 @@ import {
   INITIAL_MAINTENANCE_SCHEDULE,
   INITIAL_SERVICE_INVENTORY,
   INITIAL_SERVICE_REPORTS,
+  INITIAL_STUDENT_NOTIFICATIONS,
 } from './mockData';
 
 import {
@@ -71,6 +77,7 @@ import {
   AssignStaffModal,
   AddInventoryItemModal,
   ServiceHelpModal,
+  TrackStatusModal,
 } from './modals';
 
 const API_BASE = '/api';
@@ -137,6 +144,21 @@ function ServicesPortalContent({
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showAddInventoryModal, setShowAddInventoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Track Status Modal State
+  const [selectedTicketForTrack, setSelectedTicketForTrack] = useState<ServiceRequest | null>(null);
+  const [showTrackModal, setShowTrackModal] = useState(false);
+
+  // Student Notifications State
+  const [notifications, setNotifications] = useState<StudentNotification[]>(INITIAL_STUDENT_NOTIFICATIONS);
+  const [notifFilter, setNotifFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+
+  // Request History State
+  const [historyCategoryFilter, setHistoryCategoryFilter] = useState<'ALL' | ServiceCategory>('ALL');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'ALL' | ServiceStatus>('ALL');
+  const [historySearch, setHistorySearch] = useState('');
+
+  const unreadNotifCount = notifications.filter((n) => !n.read).length;
 
   // Clock Timer
   useEffect(() => {
@@ -383,6 +405,8 @@ function ServicesPortalContent({
             {[
               { id: 'DASHBOARD', label: 'Home Dashboard', icon: Wrench, badge: null },
               { id: 'SERVICE_REQUESTS', label: 'Service Requests', icon: FileText, badge: `${openRequestsCount}`, badgeColor: 'bg-blue-500/20 text-blue-300' },
+              { id: 'REQUEST_HISTORY', label: 'Request History', icon: Clock, badge: `${requests.length} total`, badgeColor: 'bg-indigo-500/20 text-indigo-300' },
+              { id: 'NOTIFICATIONS', label: 'Student Notifications', icon: Bell, badge: unreadNotifCount > 0 ? `${unreadNotifCount} new` : null, badgeColor: 'bg-rose-500/20 text-rose-300' },
               { id: 'MAINTENANCE', label: 'Maintenance Schedule', icon: Calendar, badge: 'Daily', badgeColor: 'bg-emerald-500/20 text-emerald-300' },
               { id: 'ASSIGNED_TASKS', label: 'Assigned Tasks', icon: CheckCircle2, badge: `${inProgressCount} active`, badgeColor: 'bg-purple-500/20 text-purple-300' },
               { id: 'COMPLAINTS', label: 'Student Complaints', icon: AlertTriangle, badge: newRequestsCount > 0 ? `${newRequestsCount} new` : null, badgeColor: 'bg-amber-500/20 text-amber-300' },
@@ -457,6 +481,8 @@ function ServicesPortalContent({
                 <span className="text-blue-600 text-xs font-bold font-mono">
                   {activeTab === 'DASHBOARD' && 'Operations Overview'}
                   {activeTab === 'SERVICE_REQUESTS' && 'All Work Order Requests'}
+                  {activeTab === 'REQUEST_HISTORY' && 'Request History & Work Order Audit'}
+                  {activeTab === 'NOTIFICATIONS' && 'Student Service Notifications'}
                   {activeTab === 'MAINTENANCE' && 'Preventive Maintenance Schedules'}
                   {activeTab === 'ASSIGNED_TASKS' && 'Technician Task Board'}
                   {activeTab === 'COMPLAINTS' && 'Hostel Grievances & Service Tickets'}
@@ -1544,7 +1570,16 @@ function ServicesPortalContent({
 
       {/* =================================================================== */}
       {/* 3. MODALS SUITE                                                     */}
-      {/* =================================================================== */}
+      
+      {/* 6. TRACK STATUS MODAL */}
+      <TrackStatusModal
+        isOpen={showTrackModal}
+        ticket={selectedTicketForTrack}
+        onClose={() => setShowTrackModal(false)}
+        onUpdateStatus={handleUpdateStatus}
+        onAssignStaff={handleAssignStaff}
+      />
+{/* =================================================================== */}
       <CreateServiceTicketModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
