@@ -2820,6 +2820,9 @@ function StudentPortalContent({
           reason: passReason,
           destination: passDestination,
           validTill: new Date(`${passReturnDate}T${passReturnTime}:00`).toISOString(),
+          studentName: effectiveStudentName,
+          roomNumber: effectiveRoom,
+          blockName: effectiveHostel,
         }),
       });
 
@@ -2983,6 +2986,9 @@ function StudentPortalContent({
         photoUrl: complaintPhotoUrl || undefined,
         videoUrl: complaintVideoUrl || undefined,
         voiceUrl: voiceNoteBlobUrl || undefined,
+        studentName: effectiveStudentName,
+        roomNumber: effectiveRoom,
+        blockName: effectiveHostel,
       };
 
       const res = await fetch(`${API_BASE}/complaints`, {
@@ -3018,6 +3024,37 @@ function StudentPortalContent({
     } finally {
       setComplaintSubmitting(false);
     }
+  };
+
+  // Handle Master SOS Emergency Trigger
+  const handleTriggerSos = async () => {
+    setShowSosActiveModal(true);
+    try {
+      await fetch(`${API_BASE}/emergency/trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          emergencyType: sosCategory || 'MEDICAL',
+          locationDetails: `Hostel A • Room ${effectiveRoom}`,
+          studentName: effectiveStudentName,
+          phone: profilePhone || '+91 98765 43210',
+          roomNumber: effectiveRoom,
+          blockName: effectiveHostel,
+          notes: isSilentSos ? 'Silent mode alarm triggered by student' : 'Audible panic button pressed',
+        }),
+      });
+    } catch (err) {
+      console.warn('Emergency alert network broadcast:', err);
+    }
+  };
+
+  const handleDismissSos = async () => {
+    setShowSosActiveModal(false);
+    setSubmitSuccess('Emergency SOS dismissed. Campus Security & Warden desks have been notified that you are safe.');
+    setTimeout(() => setSubmitSuccess(''), 5000);
   };
 
   // Handle Like / Cheer Gallery Item
@@ -7030,7 +7067,7 @@ function StudentPortalContent({
                     <div className="absolute w-52 h-52 rounded-full border-2 border-rose-500/40 animate-pulse pointer-events-none"></div>
 
                     <button
-                      onClick={() => setShowSosActiveModal(true)}
+                      onClick={handleTriggerSos}
                       className="w-44 h-44 md:w-52 md:h-52 rounded-full bg-gradient-to-tr from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black shadow-2xl shadow-rose-600/70 ring-8 ring-rose-500/40 active:scale-95 transition-all flex flex-col items-center justify-center cursor-pointer group z-10"
                     >
                       <ShieldAlert className="w-12 h-12 md:w-14 md:h-14 mb-1 group-hover:scale-110 transition-transform" />

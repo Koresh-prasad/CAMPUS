@@ -60,6 +60,7 @@ import {
   Package,
   Ambulance,
   UserPlus,
+  BellRing,
 } from 'lucide-react';
 import { DASHBOARD_MOCK } from '../../../data/dashboardMock';
 import {
@@ -176,6 +177,48 @@ function AdminPortalContent({
     { id: 'aud-4', actor: 'System Auto-Audit', action: 'Night Curfew Verification Completed', timestamp: 'Yesterday 21:30', ip: 'System Cron' },
   ]);
 
+  // Real-Time Notifications State
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: 'EMERGENCY' | 'PASS' | 'COMPLAINT' | 'ADMISSION' | 'STAFF' | 'GENERAL';
+    timestamp: string;
+    read: boolean;
+    targetTab?: AdminTab;
+    data?: any;
+  }>>([
+    {
+      id: 'init-1',
+      title: '🚪 Gate Pass Request: Subham Pradhan',
+      message: 'Weekend Home Visit leave requested for Cuttack (Room A-204)',
+      type: 'PASS',
+      timestamp: '2 mins ago',
+      read: false,
+      targetTab: 'LEAVE_GATE_PASS',
+    },
+    {
+      id: 'init-2',
+      title: '📝 Grievance Ticket #CMP-10492',
+      message: 'Water heater malfunction reported in Hostel Block A',
+      type: 'COMPLAINT',
+      timestamp: '15 mins ago',
+      read: false,
+      targetTab: 'GRIEVANCES',
+    },
+    {
+      id: 'init-3',
+      title: '👨‍🎓 New Student Registration',
+      message: 'Rohan Sen applied for B.Tech Computer Science admission',
+      type: 'ADMISSION',
+      timestamp: '1 hour ago',
+      read: true,
+      targetTab: 'APPROVALS',
+    },
+  ]);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [activeSosAlert, setActiveSosAlert] = useState<any>(null);
+
   // Departments List
   const departments = [
     { name: 'Computer Science & Engineering', code: 'CSE', hod: 'Dr. S. Mohanty', students: 340, faculty: 24, labs: 8 },
@@ -281,24 +324,54 @@ function AdminPortalContent({
       console.log('[Admin Dashboard] Socket connected');
     });
 
+    // 1. Staff Registration Alert
     socket.on('staff:registered', (data) => {
       console.log('Real-time staff registered alert:', data);
+      playAdminAudioChime();
       setPendingStaff((prev) => {
         const exists = prev.some((p) => p.id === data.id || p.userId === data.id || p.email === data.email);
         if (exists) return prev;
         return [data, ...prev];
       });
+      setNotifications((prev) => [
+        {
+          id: `notif-staff-${Date.now()}`,
+          title: '👔 New Staff Registration',
+          message: `${data.name} applied as ${data.category || data.designation || 'Staff'}`,
+          type: 'STAFF',
+          timestamp: 'Just now',
+          read: false,
+          targetTab: 'APPROVALS',
+          data,
+        },
+        ...prev,
+      ]);
       setSuccessMsg(`🔔 New Staff Registration: ${data.name} (${data.category || data.designation || 'Staff'})!`);
       setTimeout(() => setSuccessMsg(''), 6000);
     });
 
+    // 2. Student Admission Application Alert
     socket.on('student:registered', (data) => {
       console.log('Real-time student registered alert:', data);
+      playAdminAudioChime();
       setPendingStudents((prev) => {
         const exists = prev.some((p) => p.id === data.id || p.userId === data.id || p.email === data.email);
         if (exists) return prev;
         return [data, ...prev];
       });
+      setNotifications((prev) => [
+        {
+          id: `notif-stu-${Date.now()}`,
+          title: '👨‍🎓 Student Admission Application',
+          message: `${data.name} submitted enrollment application (${data.course || 'B.Tech'})`,
+          type: 'ADMISSION',
+          timestamp: 'Just now',
+          read: false,
+          targetTab: 'APPROVALS',
+          data,
+        },
+        ...prev,
+      ]);
       setSuccessMsg(`🔔 New Student Admission Request: ${data.name}!`);
       setTimeout(() => setSuccessMsg(''), 6000);
     });
@@ -311,7 +384,7 @@ function AdminPortalContent({
       setPendingStudents((prev) => prev.filter((p) => p.id !== data.id && p.id !== data.userId && p.email !== data.email));
     });
 
-    // Real-Time Grievance / Complaint Dispatch from Students
+    // 3. Real-Time Grievance / Complaint Dispatch from Students
     const handleComplaintIncoming = (data: any) => {
       console.log('⚡ Real-time grievance incoming to Admin Dashboard:', data);
       playAdminAudioChime();
@@ -344,12 +417,137 @@ function AdminPortalContent({
           ...prev,
         ];
       });
+      setNotifications((prev) => [
+        {
+          id: `notif-cmp-${Date.now()}`,
+          title: `📝 Grievance #${data.ticketNumber || 'TKT'}`,
+          message: `${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) reported [${data.category || 'OTHER'}]`,
+          type: 'COMPLAINT',
+          timestamp: 'Just now',
+          read: false,
+          targetTab: 'GRIEVANCES',
+          data,
+        },
+        ...prev,
+      ]);
       setSuccessMsg(`🚨 Grievance Alert #${data.ticketNumber || 'TKT'}: ${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) - [${data.category || 'OTHER'}]`);
       setTimeout(() => setSuccessMsg(''), 7000);
     };
 
     socket.on('complaint:created', handleComplaintIncoming);
     socket.on('complaint:update', handleComplaintIncoming);
+    socket.on('complaint:raised', handleComplaintIncoming);
+
+    // 4. Real-Time Gate Pass / Leave Request from Students
+    const handlePassIncoming = (data: any) => {
+      console.log('⚡ Real-time pass update received in Admin Dashboard:', data);
+      playAdminAudioChime();
+      setPasses((prev) => {
+        const id = data.passId || data.id;
+        const exists = prev.some((p) => (id && p.id === id) || (data.passNumber && p.passNumber === data.passNumber));
+        if (exists) {
+          return prev.map((p) => ((id && p.id === id) || (data.passNumber && p.passNumber === data.passNumber) ? { ...p, ...data } : p));
+        }
+        return [
+          {
+            id: id || `pass-${Date.now()}`,
+            passNumber: data.passNumber || `GP-${Math.floor(10000 + Math.random() * 90000)}`,
+            passType: data.passType || 'OUTING',
+            status: data.status || 'PENDING',
+            destination: data.destination || 'Campus Outing',
+            reason: data.reason || 'Personal outing',
+            validTill: data.validTill || new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
+            createdAt: data.createdAt || new Date().toISOString(),
+            resident: {
+              name: data.studentName || data.residentName || 'Student Resident',
+              residentProfile: {
+                roomNumber: data.roomNumber || 'A-204',
+                blockName: data.blockName || 'Hostel A',
+              },
+            },
+          },
+          ...prev,
+        ];
+      });
+      setNotifications((prev) => [
+        {
+          id: `notif-pass-${Date.now()}`,
+          title: `🚪 Gate Pass: ${data.studentName || data.residentName || 'Student'}`,
+          message: `${data.passType || 'Pass'} applied for ${data.destination || 'outing'} (${data.roomNumber || 'Room'})`,
+          type: 'PASS',
+          timestamp: 'Just now',
+          read: false,
+          targetTab: 'LEAVE_GATE_PASS',
+          data,
+        },
+        ...prev,
+      ]);
+      setSuccessMsg(`🚪 Gate Pass Request: ${data.studentName || 'Student'} (${data.roomNumber || 'Hostel'}) - [${data.destination || 'Outing'}]`);
+      setTimeout(() => setSuccessMsg(''), 7000);
+    };
+
+    socket.on('pass:requested', handlePassIncoming);
+    socket.on('pass:created', handlePassIncoming);
+    socket.on('pass:status_update', handlePassIncoming);
+
+    // 5. Emergency SOS Critical Alarm
+    const handleEmergencyIncoming = (data: any) => {
+      console.log('🚨 EMERGENCY SOS received in Admin Dashboard:', data);
+      playAdminAudioChime();
+      setActiveSosAlert(data);
+      setNotifications((prev) => [
+        {
+          id: `notif-em-${Date.now()}`,
+          title: `🚨 EMERGENCY SOS: ${data.emergencyType || 'CODE RED'}`,
+          message: `${data.residentName || 'Student'} triggered SOS at ${data.locationDetails || 'Hostel Room'}!`,
+          type: 'EMERGENCY',
+          timestamp: 'Just now',
+          read: false,
+          targetTab: 'EMERGENCY',
+          data,
+        },
+        ...prev,
+      ]);
+      setSuccessMsg(`🚨 CRITICAL ALERT: Emergency SOS from ${data.residentName || 'Student'} at ${data.locationDetails || 'Hostel'}!`);
+      setTimeout(() => setSuccessMsg(''), 10000);
+    };
+
+    socket.on('emergency:triggered', handleEmergencyIncoming);
+    socket.on('emergency:sos', handleEmergencyIncoming);
+    socket.on('emergency:resolved', () => {
+      setActiveSosAlert(null);
+    });
+
+    // 6. Unified Notification Event
+    socket.on('notification:new', (payload: any) => {
+      console.log('📩 notification:new received in Admin Dashboard:', payload);
+      setNotifications((prev) => {
+        const exists = prev.some((n) => n.id === payload.id);
+        if (exists) return prev;
+        return [
+          {
+            id: payload.id || `notif-${Date.now()}`,
+            title: payload.title || 'Campus Update',
+            message: payload.message || 'New activity logged on campus',
+            type: payload.type || 'GENERAL',
+            timestamp: 'Just now',
+            read: false,
+            targetTab:
+              payload.type === 'EMERGENCY'
+                ? 'EMERGENCY'
+                : payload.type === 'PASS'
+                ? 'LEAVE_GATE_PASS'
+                : payload.type === 'COMPLAINT'
+                ? 'GRIEVANCES'
+                : payload.type === 'ADMISSION'
+                ? 'APPROVALS'
+                : 'DASHBOARD',
+            data: payload.data,
+          },
+          ...prev,
+        ];
+      });
+    });
 
     return () => {
       socket.disconnect();
@@ -660,17 +858,127 @@ function AdminPortalContent({
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
             </button>
 
-            {/* Notification Bell with Badge 3 */}
-            <button
-              onClick={() => setActiveTab('ANNOUNCEMENTS')}
-              className="relative p-2 text-slate-600 hover:text-blue-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-              title="3 Unread Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
-                3
-              </span>
-            </button>
+            {/* Notification Bell with Dynamic Real-Time Unread Badge */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                className={`relative p-2 rounded-xl transition cursor-pointer ${
+                  showNotificationDropdown ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
+                }`}
+                title="Real-Time Admin Activity & Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {notifications.filter((n) => !n.read).length > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                    {notifications.filter((n) => !n.read).length}
+                  </span>
+                )}
+              </button>
+
+              {/* Real-time Notifications Popover Dropdown */}
+              {showNotificationDropdown && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200/90 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-3.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <BellRing className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-black tracking-wide">Live Campus Activity & Notifications</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {notifications.some((n) => !n.read) && (
+                        <button
+                          type="button"
+                          onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                          className="text-[10px] text-blue-300 hover:text-white underline font-bold transition cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <span className="px-2 py-0.5 rounded-full bg-slate-700 text-[10px] font-bold text-slate-200">
+                        {notifications.length} total
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-semibold">
+                        No notifications yet. Student and campus actions will show up here live!
+                      </div>
+                    ) : (
+                      notifications.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)));
+                            if (item.targetTab) {
+                              setActiveTab(item.targetTab);
+                              setActiveSubTab('');
+                            }
+                            setShowNotificationDropdown(false);
+                          }}
+                          className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start gap-3 ${
+                            !item.read ? 'bg-blue-50/50' : ''
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-xs font-bold ${
+                              item.type === 'EMERGENCY'
+                                ? 'bg-rose-100 text-rose-600 ring-2 ring-rose-400 animate-pulse'
+                                : item.type === 'PASS'
+                                ? 'bg-blue-100 text-blue-600'
+                                : item.type === 'COMPLAINT'
+                                ? 'bg-amber-100 text-amber-600'
+                                : item.type === 'ADMISSION'
+                                ? 'bg-purple-100 text-purple-600'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {item.type === 'EMERGENCY'
+                              ? '🚨'
+                              : item.type === 'PASS'
+                              ? '🚪'
+                              : item.type === 'COMPLAINT'
+                              ? '📝'
+                              : item.type === 'ADMISSION'
+                              ? '🎓'
+                              : '🔔'}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className={`text-xs truncate ${!item.read ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
+                                {item.title}
+                              </p>
+                              <span className="text-[10px] text-slate-400 whitespace-nowrap">{item.timestamp}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5">{item.message}</p>
+                            <span className="inline-block text-[10px] text-blue-600 font-bold mt-1">
+                              Click to view in {item.targetTab || 'portal'} &rarr;
+                            </span>
+                          </div>
+
+                          {!item.read && <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1.5" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('ANNOUNCEMENTS');
+                        setShowNotificationDropdown(false);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
+                    >
+                      View All Campus Broadcasts &amp; Notices &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Admin Avatar & Role Capsule */}
             <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
@@ -684,6 +992,44 @@ function AdminPortalContent({
             </div>
           </div>
         </header>
+
+        {/* Sticky Active Emergency Alert Siren Banner */}
+        {activeSosAlert && (
+          <div className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white px-6 py-3.5 flex items-center justify-between shadow-lg border-b-2 border-red-400 animate-pulse z-30 shrink-0">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white/20 rounded-xl">
+                <ShieldAlert className="w-6 h-6 animate-bounce" />
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-wider">
+                  🚨 ACTIVE CRISIS CODE RED: {activeSosAlert.emergencyType || 'EMERGENCY SOS'}
+                </p>
+                <p className="text-xs text-rose-100">
+                  Resident: <strong>{activeSosAlert.residentName || 'Student'}</strong> • Location: <strong>{activeSosAlert.locationDetails || 'Campus'}</strong> (Contact: {activeSosAlert.residentPhone || activeSosAlert.phone || '+91 98765 43210'})
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('EMERGENCY');
+                  setActiveSubTab('Security');
+                }}
+                className="px-4 py-1.5 rounded-xl bg-white text-rose-700 font-black text-xs hover:bg-rose-50 shadow transition cursor-pointer"
+              >
+                Dispatch Security
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSosAlert(null)}
+                className="px-3 py-1.5 rounded-xl bg-rose-800 hover:bg-rose-900 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content Body */}
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -1768,6 +2114,7 @@ function AdminPortalContent({
             <HostelLeaveGatePassView
               activeSubTab={activeSubTab}
               setActiveSubTab={setActiveSubTab}
+              externalPasses={passes}
             />
           )}
 
@@ -1809,6 +2156,7 @@ function AdminPortalContent({
             <EmergencyView
               activeSubTab={activeSubTab}
               setActiveSubTab={setActiveSubTab}
+              activeAlerts={activeSosAlert ? [activeSosAlert] : []}
             />
           )}
 

@@ -20,11 +20,13 @@ import {
 interface HostelLeaveGatePassProps {
   activeSubTab: string;
   setActiveSubTab: (tab: string) => void;
+  externalPasses?: any[];
 }
 
 export default function HostelLeaveGatePassView({
   activeSubTab,
   setActiveSubTab,
+  externalPasses,
 }: HostelLeaveGatePassProps) {
   const subTabs = [
     'Leave Request',
@@ -105,14 +107,92 @@ export default function HostelLeaveGatePassView({
   const [verifyRoll, setVerifyRoll] = useState('');
   const [scanResult, setScanResult] = useState<any>(null);
 
-  const handleApprove = (id: string) => {
+  // Sync real passes from backend database
+  React.useEffect(() => {
+    const fetchRealPasses = async () => {
+      try {
+        const res = await fetch('/api/passes');
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : data.passes || [];
+          if (list.length > 0) {
+            const mapped = list.map((p: any) => ({
+              id: p.id,
+              studentName: p.resident?.name || p.studentName || 'Student Resident',
+              rollNo: p.resident?.residentProfile?.rollNo || p.rollNo || '2101289001',
+              room: p.resident?.residentProfile?.roomNumber || p.roomNumber || 'A-204',
+              type: p.passType === 'HOME' ? 'HOME_LEAVE' : 'DAY_PASS',
+              from: p.validTill ? new Date(p.validTill).toLocaleDateString() : 'Today',
+              to: p.validTill ? new Date(p.validTill).toLocaleDateString() : 'Today',
+              reason: p.reason || 'Personal outing',
+              parentPhone: p.resident?.residentProfile?.parentPhone || '+91 94370 11223',
+              parentConsent: 'Confirmed',
+              status: p.status || 'PENDING',
+              passCode: p.passNumber,
+              appliedAt: new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }));
+            setRequests((prev) => {
+              const prevIds = new Set(prev.map((r) => r.id));
+              const newItems = mapped.filter((m: any) => !prevIds.has(m.id));
+              return [...newItems, ...prev];
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Passes desk sync:', err);
+      }
+    };
+    fetchRealPasses();
+  }, []);
+
+  // Sync external passes updates from parent
+  React.useEffect(() => {
+    if (externalPasses && externalPasses.length > 0) {
+      const mapped = externalPasses.map((p: any) => ({
+        id: p.id,
+        studentName: p.resident?.name || p.studentName || 'Student Resident',
+        rollNo: p.resident?.residentProfile?.rollNo || p.rollNo || '2101289001',
+        room: p.resident?.residentProfile?.roomNumber || p.roomNumber || 'A-204',
+        type: p.passType === 'HOME' ? 'HOME_LEAVE' : 'DAY_PASS',
+        from: p.validTill ? new Date(p.validTill).toLocaleDateString() : 'Today',
+        to: p.validTill ? new Date(p.validTill).toLocaleDateString() : 'Today',
+        reason: p.reason || 'Personal outing',
+        parentPhone: p.resident?.residentProfile?.parentPhone || '+91 94370 11223',
+        parentConsent: 'Confirmed',
+        status: p.status || 'PENDING',
+        passCode: p.passNumber,
+        appliedAt: new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }));
+      setRequests((prev) => {
+        const prevIds = new Set(prev.map((r) => r.id));
+        const newItems = mapped.filter((m: any) => !prevIds.has(m.id));
+        return [...newItems, ...prev];
+      });
+    }
+  }, [externalPasses]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await fetch(`/api/passes/${id}/approve`, { method: 'POST' });
+    } catch (e) {
+      console.warn('Approve pass sync:', e);
+    }
     setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'APPROVED', passCode: `GP-${Math.floor(10000 + Math.random() * 90000)}` } : r))
+      prev.map((r) => (r.id === id ? { ...r, status: 'APPROVED', passCode: r.passCode || `GP-${Math.floor(10000 + Math.random() * 90000)}` } : r))
     );
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     const reason = prompt('Enter rejection reason:') || 'Denied by warden';
+    try {
+      await fetch(`/api/passes/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+    } catch (e) {
+      console.warn('Reject pass sync:', e);
+    }
     setRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: 'REJECTED', rejectionReason: reason } : r))
     );

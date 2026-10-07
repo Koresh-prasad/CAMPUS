@@ -19,11 +19,13 @@ import {
 interface EmergencyViewProps {
   activeSubTab: string;
   setActiveSubTab: (tab: string) => void;
+  activeAlerts?: any[];
 }
 
 export default function EmergencyView({
   activeSubTab,
   setActiveSubTab,
+  activeAlerts,
 }: EmergencyViewProps) {
   const subTabs = [
     'Emergency Contacts',
@@ -42,9 +44,102 @@ export default function EmergencyView({
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastLevel, setBroadcastLevel] = useState('HIGH_ALERT');
+  const [liveAlerts, setLiveAlerts] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchActiveAlerts = async () => {
+      try {
+        const res = await fetch('/api/emergency/active');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) setLiveAlerts(data);
+        }
+      } catch (_) {}
+    };
+    fetchActiveAlerts();
+  }, []);
+
+  React.useEffect(() => {
+    if (activeAlerts && activeAlerts.length > 0) {
+      setLiveAlerts((prev) => {
+        const prevIds = new Set(prev.map((a) => a.id));
+        const toAdd = activeAlerts.filter((a) => !prevIds.has(a.id));
+        return [...toAdd, ...prev];
+      });
+    }
+  }, [activeAlerts]);
+
+  const handleResolveAlert = async (id: string) => {
+    try {
+      await fetch(`/api/emergency/${id}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'RESOLVED', notes: 'Resolved by Admin Security Desk' }),
+      });
+      setLiveAlerts((prev) => prev.filter((a) => a.id !== id));
+      alert('Emergency alert marked as resolved.');
+    } catch (_) {
+      alert('Failed to resolve alert.');
+    }
+  };
+
+  const handleBroadcastEmergency = async () => {
+    try {
+      await fetch('/api/emergency/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emergencyType: broadcastLevel,
+          locationDetails: broadcastTitle || 'Campus-Wide Critical Siren',
+          notes: broadcastMessage || 'Immediate safety dispatch issued.',
+          studentName: 'Campus Admin Control Desk',
+        }),
+      });
+      alert(`Emergency broadcast "${broadcastTitle || 'Alert'}" successfully dispatched across campus!`);
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+    } catch (_) {
+      alert('Broadcast dispatch failed.');
+    }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Active Live Emergency Incidents Banner */}
+      {liveAlerts.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-500 rounded-2xl p-4 space-y-3 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-rose-700">
+              <ShieldAlert className="w-5 h-5 animate-bounce" />
+              <h4 className="text-sm font-black uppercase tracking-wider">
+                🚨 Active Emergency Incidents ({liveAlerts.length})
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full">LIVE RADAR</span>
+          </div>
+          <div className="space-y-2">
+            {liveAlerts.map((alt) => (
+              <div key={alt.id} className="bg-white p-3 rounded-xl border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <p className="font-black text-rose-900">{alt.emergencyType}: {alt.residentName || 'Student'}</p>
+                  <p className="text-slate-600 text-[11px] mt-0.5">Room: {alt.roomNumber || 'Unknown'} • Block: {alt.blockName || 'Hostel'} • Contact: {alt.residentPhone || alt.parentPhone || 'N/A'}</p>
+                  {alt.locationDetails && <p className="text-slate-500 text-[10px]">{alt.locationDetails}</p>}
+                </div>
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleResolveAlert(alt.id)}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition cursor-pointer"
+                  >
+                    Mark Resolved
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sub-Tabs Navigation */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/90 pb-3 bg-white p-3 rounded-2xl shadow-2xs">
         {subTabs.map((tab) => (
@@ -233,11 +328,7 @@ export default function EmergencyView({
 
             <button
               type="button"
-              onClick={() => {
-                alert(`Broadcast dispatched: "${broadcastTitle || 'Emergency Alert'}" to 2,485 students!`);
-                setBroadcastTitle('');
-                setBroadcastMessage('');
-              }}
+              onClick={handleBroadcastEmergency}
               className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center space-x-2"
             >
               <Send className="w-3.5 h-3.5" />
