@@ -1,0 +1,25 @@
+{
+  "name": "Campus Helper - Student App",
+  "short_name": "Student App",
+  "description": "Smart Hostel Management & Student Resident Mobile App",
+  "start_url": "/student/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1a3a",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/images/campus-students.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/campus-students.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

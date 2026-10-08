@@ -13,8 +13,10 @@ import CampusServicesView from '../components/CampusServicesView';
 import NotificationsView from '../components/NotificationsView';
 import SettingsView from '../components/SettingsView';
 import RoleBasedAuthCard from '../components/RoleBasedAuthCard';
+import StudentAppModal from '../components/StudentAppModal';
 import {
   X,
+  Smartphone,
   Zap,
   BookOpen,
   Globe,
@@ -298,6 +300,7 @@ export default function AdminPanel() {
 
   // Manager Profile State (Chief Warden profile with photo)
   const [managerProfile, setManagerProfile] = useState<any>(null);
+  const [showStudentAppModal, setShowStudentAppModal] = useState(false);
   const [editManagerModalOpen, setEditManagerModalOpen] = useState(false);
   const [headingModalOpen, setHeadingModalOpen] = useState(false);
   const [managerSaving, setManagerSaving] = useState(false);
@@ -1521,15 +1524,15 @@ export default function AdminPanel() {
             <span className="text-xs font-semibold text-slate-500 tracking-wide hidden md:inline">
               Connect &nbsp;•&nbsp; Support &nbsp;•&nbsp; Grow
             </span>
-            <a
-              href={process.env.NEXT_PUBLIC_RESIDENT_WEB_URL || 'http://localhost:3001'}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => setShowStudentAppModal(true)}
               className="text-xs font-bold text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 flex items-center space-x-1.5 transition cursor-pointer"
             >
-              <span>Open Student Resident App</span>
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Open Student Platform App</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </a>
+            </button>
           </div>
         </header>
 
@@ -1786,6 +1789,12 @@ export default function AdminPanel() {
             <span>© 2025 Campus Helper. All rights reserved.</span>
           </div>
         </footer>
+
+        {/* Student Mobile App Download & Install Modal */}
+        <StudentAppModal
+          isOpen={showStudentAppModal}
+          onClose={() => setShowStudentAppModal(false)}
+        />
 
         {/* 5. REGISTRATION MODAL OVERLAY (DIALOG) */}
         {showRegisterModal && (

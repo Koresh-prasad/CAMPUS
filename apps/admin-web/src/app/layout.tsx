@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SHMS Admin & Warden Console - Apex Hostels',
-  description: 'Smart Hostel Management System - Enterprise Command Center',
+  title: 'Campus Helper - Smart Hostel Management & Student App',
+  description: 'Smart Hostel Management System & Student Resident Mobile Platform',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
