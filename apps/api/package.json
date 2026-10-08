@@ -4,7 +4,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "prisma generate && prisma db push --accept-data-loss && tsc",
+    "build": "DATABASE_URL=\"file:./prisma/dev.db\" prisma generate && DATABASE_URL=\"file:./prisma/dev.db\" prisma db push --accept-data-loss && tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
