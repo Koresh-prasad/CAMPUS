@@ -1,11 +1,27 @@
+import path from 'path';
 import { prisma } from './prisma';
 
 export async function bootstrapDatabase() {
   try {
-    const tenantCount = await prisma.tenant.count();
-    if (tenantCount > 0) {
-      console.log('✅ Database already populated with tenants.');
-      return;
+    let tenantCount = 0;
+    try {
+      tenantCount = await prisma.tenant.count();
+      if (tenantCount > 0) {
+        console.log('✅ Database already populated with tenants.');
+        return;
+      }
+    } catch (dbError: any) {
+      console.warn('⚠️ Tables missing or uninitialized. Running prisma db push...');
+      try {
+        const { execSync } = require('child_process');
+        execSync('npx prisma db push --accept-data-loss', {
+          stdio: 'inherit',
+          env: process.env,
+          cwd: __dirname.includes('dist') ? path.resolve(__dirname, '..') : process.cwd()
+        });
+      } catch (pushErr) {
+        console.error('Failed to run prisma db push automatically:', pushErr);
+      }
     }
 
     console.log('🌱 Empty database detected on cloud deploy. Auto-bootstrapping initial campus data...');

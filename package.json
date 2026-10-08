@@ -9,6 +9,8 @@
     "dev:admin": "pnpm --filter @shms/admin-web run dev",
     "dev:resident": "pnpm --filter @shms/resident-web run dev",
     "build": "pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build && pnpm --filter @shms/admin-web run build && pnpm --filter @shms/resident-web run build",
+    "build:api": "pnpm --filter @shms/shared run build && pnpm --filter @shms/api run build",
+    "start": "pnpm --filter @shms/api run start",
     "seed": "pnpm --filter @shms/api run seed"
   },
   "devDependencies": {

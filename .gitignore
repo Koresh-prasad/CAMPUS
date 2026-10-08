@@ -10,3 +10,6 @@ build
 *.turbo
 .DS_Store
 *.tsbuildinfo
+
+.vercel
+.env*

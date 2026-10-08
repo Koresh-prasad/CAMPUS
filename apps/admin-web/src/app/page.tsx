@@ -759,9 +759,13 @@ export default function AdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: loginPassword })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setLoginError(data.error || 'Authentication failed');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (e) {}
+
+      if (!res.ok || !data) {
+        setLoginError((data && data.error) || 'Authentication failed. Please verify credentials.');
         setLoginLoading(false);
         return;
       }

@@ -1,4 +1,5 @@
-const apiOrigin = (process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000').replace(/\/$/, '');
+const rawOrigin = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
+const apiOrigin = rawOrigin.trim().replace(/\/+$/, '');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
