@@ -17,92 +17,104 @@ let eatingHeadcount = {
 let liveScheduleOverrides: Record<string, any> = {};
 let liveFestivalOverride: any = null;
 
+// Complete 7-Day Indian Campus Mess Schedule
+export const DEFAULT_WEEK_SCHEDULE: Record<string, { BREAKFAST: string; LUNCH: string; SNACKS: string; DINNER: string }> = {
+  MONDAY: {
+    BREAKFAST: 'Aloo Paratha with Curd & Pickle, Boiled Eggs / Banana, Masala Chai & Filter Coffee',
+    LUNCH: 'Dal Tadka, Shahi Paneer, Jeera Rice, Tawa Roti, Boondi Raita, Green Salad',
+    SNACKS: 'Crispy Veg Samosa with Mint & Tamarind Chutney, Hot Adrak Chai',
+    DINNER: 'Rajma Masala, Kashmiri Pulao, Butter Chapati, Roasted Papad, Hot Gulab Jamun'
+  },
+  TUESDAY: {
+    BREAKFAST: 'South Indian Idli & Medu Vada, Coconut Chutney, Hot Sambar, Coffee & Milk',
+    LUNCH: 'Punjabi Chole, Steamed Basmati Rice, Bhature / Phulka Roti, Mix Veg Raita, Pickle',
+    SNACKS: 'Crispy Bread Pakora with Tomato Chutney, Hot Ginger Tea',
+    DINNER: 'Mix Veg Korma, Dal Palak, Steamed Rice, Butter Roti, Rice Kheer'
+  },
+  WEDNESDAY: {
+    BREAKFAST: 'Indori Poha with Sev & Anar, Sprouts Chaat, Boiled Eggs / Fresh Apple, Lemon Tea',
+    LUNCH: 'Kadhi Pakora, Steamed Basmati Rice, Aloo Gobi Matar, Phulka Roti, Roasted Papad',
+    SNACKS: 'Crispy Veg Cutlets, Sweet & Sour Chutney, Masala Chai',
+    DINNER: 'Paneer Butter Masala / Egg Curry, Veg Pulao, Tandoori Roti, Vanilla Ice Cream'
+  },
+  THURSDAY: {
+    BREAKFAST: 'Methi Thepla with Chhundo, Sprouts, Boiled Eggs / Banana, Masala Tea',
+    LUNCH: 'Dal Makhani, Bhindi Do Pyaza, Jeera Rice, Phulka Roti, Dahi Salad',
+    SNACKS: 'Poha Chivda & Roasted Salted Peanuts, Elaichi Chai / Filter Coffee',
+    DINNER: 'Malai Kofta, Kashmiri Dum Aloo, Steamed Basmati Rice, Butter Naan, Moong Dal Halwa'
+  },
+  FRIDAY: {
+    BREAKFAST: 'Crispy Masala Dosa & Upma, Coconut & Tomato Chutney, Sambar, Filter Coffee',
+    LUNCH: 'Dum Biryani (Veg & Chicken Counters), Mirchi Ka Salan, Burani Raita, Phulka Roti',
+    SNACKS: 'Pyaz & Mix Veg Pakoda, Mint Chutney, Hot Cutting Chai',
+    DINNER: 'Matar Paneer, Yellow Moong Dal Fry, Peas Pulao, Tawa Paratha, Bengali Rasgulla'
+  },
+  SATURDAY: {
+    BREAKFAST: 'Puri Bhaji with Suji Halwa, Boiled Eggs / Seasonal Fruits, Masala Chai',
+    LUNCH: 'Veg Fried Rice, Hakka Noodles, Veg Manchurian Gravy, Spring Roll, Sweet Corn Soup',
+    SNACKS: 'Mumbai Bhelpuri & Sev Puri Counter, Lemon Iced Tea',
+    DINNER: 'Dal Maharani, Baingan Bharta, Steamed Basmati Rice, Chapati, Fresh Fruit Custard'
+  },
+  SUNDAY: {
+    BREAKFAST: 'Chole Bhature Special, Medu Vada, Sweet Lassi, Seasonal Cut Fruits',
+    LUNCH: 'Grand Sunday Feast: Paneer Tikka Masala, Veg Dum Biryani, Garlic Naan, Boondi Raita, Gulab Jamun',
+    SNACKS: 'Special Grilled Cheese Sandwiches, Cold Coffee with Chocolate Ice Cream',
+    DINNER: 'Sunday Festive Gala: Shahi Paneer, Kashmiri Pulao, Butter Paratha, Royal Rasmalai'
+  }
+};
+
+const defaultFestivalSpecial = {
+  title: 'Grand Campus Festive Feast & Gala Buffet',
+  occasion: 'Upcoming Festive Celebration & Sunday Gala Banquet',
+  date: 'This Sunday Special (7:30 PM - 10:30 PM)',
+  breakfastSpecial: 'Chole Bhature with Pindi Chole, Medu Vada, Sweet Lassi & Kesar Halwa',
+  lunchSpecial: 'Mughlai Veg Dum Biryani, Dal Makhani, Paneer Lababdar, Butter Naan, Raita & Gulab Jamun',
+  dinnerFeast: 'Shahi Paneer Tikka Masala, Kashmiri Pulao, Tandoori Roti, Live Jalebi & Rabri Counter, Premium Ice Cream Buffet',
+  liveCounters: [
+    'Live Chaat & Pani Puri Counter (4:30 PM - 6:30 PM)',
+    'Fresh Tandoor Naan & Roti Station',
+    'Ice Cream Sundae & Kulfi Bar'
+  ],
+  highlights: [
+    'FSSAI 5-Star Clean & Hygiene Campus Certified',
+    'Special Jain & Sattvik preparation counters available upon request',
+    'Festival Music, Ambient Lighting & Special Dining Hall Decor'
+  ],
+  dietaryNotes: '100% Pure Vegetarian & Halal options clearly separated with dedicated serving stations'
+};
+
+// Helper: build full merged schedule
+function buildCurrentSchedule(dbItems: any[]) {
+  const schedule: Record<string, any> = JSON.parse(JSON.stringify(DEFAULT_WEEK_SCHEDULE));
+
+  // Merge database items if present
+  dbItems.forEach((item) => {
+    const day = (item.dayOfWeek || '').toUpperCase();
+    const meal = (item.mealType || '').toUpperCase();
+    if (day && meal) {
+      if (!schedule[day]) schedule[day] = {};
+      schedule[day][meal] = item.items;
+    }
+  });
+
+  // Overlay live in-memory overrides
+  Object.keys(liveScheduleOverrides).forEach((day) => {
+    const upperDay = day.toUpperCase();
+    if (!schedule[upperDay]) schedule[upperDay] = {};
+    schedule[upperDay] = { ...schedule[upperDay], ...liveScheduleOverrides[day] };
+  });
+
+  return schedule;
+}
+
+// 1. GET FULL WEEK SCHEDULE + TODAY
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const items = await prisma.menuItem.findMany();
-    
-    // Diverse schedule by dayOfWeek
-    const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-    const defaultSchedule: Record<string, any> = {
-      MONDAY: {
-        BREAKFAST: 'Aloo Paratha, Curd, Boiled Eggs / Banana, Masala Chai / Filter Coffee',
-        LUNCH: 'Dal Tadka, Shahi Paneer, Jeera Rice, Tawa Roti, Green Salad',
-        SNACKS: 'Veg Samosa with Mint & Tamarind Chutney, Adrak Chai',
-        DINNER: 'Rajma Masala, Kashmiri Pulao, Butter Chapati, Gulab Jamun'
-      },
-      TUESDAY: {
-        BREAKFAST: 'South Indian Idli Sambar, Coconut Chutney, Sprouts Chaat, Coffee / Milk',
-        LUNCH: 'Chole Punjabi, Jeera Rice, Bhature / Phulka Roti, Boondi Raita',
-        SNACKS: 'Crispy Bread Pakora, Tomato Sauce, Hot Tea',
-        DINNER: 'Mix Veg Korma, Dal Palak, Steamed Rice, Roti, Kheer'
-      },
-      WEDNESDAY: {
-        BREAKFAST: 'Indori Poha with Sev, Boiled Eggs / Fresh Fruits, Lemon Tea / Coffee',
-        LUNCH: 'Kadhi Pakora, Steamed Basmati Rice, Aloo Gobi Masala, Roti, Papad',
-        SNACKS: 'Crispy Veg Cutlets, Green Chutney, Masala Chai',
-        DINNER: 'Paneer Butter Masala / Egg Curry, Tandoori Roti, Veg Pulao, Ice Cream'
-      },
-      THURSDAY: {
-        BREAKFAST: 'Methi Thepla, Chhundo Chutney, Boiled Eggs / Milk, Chai',
-        LUNCH: 'Dal Makhani, Bhindi Masala, Jeera Rice, Phulka Roti, Salad',
-        SNACKS: 'Poha Chivda, Roasted Peanuts, Tea / Coffee',
-        DINNER: 'Malai Kofta, Kashmiri Dum Aloo, Butter Naan, Pulao, Moong Dal Halwa'
-      },
-      FRIDAY: {
-        BREAKFAST: 'Crispy Medu Vada, Upma, Coconut Chutney, Sambar, Filter Coffee',
-        LUNCH: 'Veg Biryani / Chicken Biryani, Mirchi Ka Salan, Onion Raita, Phulka',
-        SNACKS: 'Onion & Mix Veg Pakoda, Green Chutney, Hot Adrak Chai',
-        DINNER: 'Matar Paneer, Yellow Dal Fry, Peas Pulao, Tawa Paratha, Rasgulla'
-      },
-      SATURDAY: {
-        BREAKFAST: 'Puri Bhaji with Halwa, Boiled Eggs / Fruits, Masala Tea',
-        LUNCH: 'Veg Fried Rice, Hakka Noodles, Manchurian Gravy, Spring Roll, Soup',
-        SNACKS: 'Bhelpuri / Sev Puri Counter, Lemon Iced Tea',
-        DINNER: 'Dal Maharani, Baingan Bharta, Steamed Basmati Rice, Chapati, Custard'
-      },
-      SUNDAY: {
-        BREAKFAST: 'Chole Bhature Special, Sweet Lassi, Fresh Seasonal Cut Fruits',
-        LUNCH: 'Grand Sunday Feast: Paneer Makhani, Dum Biryani, Garlic Naan, Raita',
-        SNACKS: 'Special Grilled Sandwiches, Cold Coffee with Ice Cream',
-        DINNER: 'Festive Buffet: Shahi Korma, Jeera Rice, Butter Paratha, Rasmalai'
-      }
-    };
-
-    const schedule: Record<string, any> = { ...defaultSchedule };
-
-    items.forEach((item) => {
-      if (!schedule[item.dayOfWeek]) schedule[item.dayOfWeek] = {};
-      schedule[item.dayOfWeek][item.mealType] = item.items;
-    });
-
-    // Overlay live schedule overrides
-    Object.keys(liveScheduleOverrides).forEach((day) => {
-      if (!schedule[day]) schedule[day] = {};
-      schedule[day] = { ...schedule[day], ...liveScheduleOverrides[day] };
-    });
+    const schedule = buildCurrentSchedule(items);
 
     const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const todayName = daysMap[new Date().getDay()];
-
-    const defaultFestivalSpecial = {
-      title: 'Grand Campus Festive Feast & Gala Buffet',
-      occasion: 'Upcoming Festive Celebration & Sunday Gala Banquet',
-      date: 'This Sunday Special (7:30 PM - 10:30 PM)',
-      breakfastSpecial: 'Chole Bhature with Pindi Chole, Medu Vada, Sweet Lassi & Kesar Halwa',
-      lunchSpecial: 'Mughlai Veg Dum Biryani, Dal Makhani, Paneer Lababdar, Butter Naan, Raita & Gulab Jamun',
-      dinnerFeast: 'Shahi Paneer Tikka Masala, Kashmiri Pulao, Tandoori Roti, Live Jalebi & Rabri Counter, Premium Ice Cream Buffet',
-      liveCounters: [
-        'Live Chaat & Pani Puri Counter (4:30 PM - 6:30 PM)',
-        'Fresh Tandoor Naan & Roti Station',
-        'Ice Cream Sundae & Kulfi Bar'
-      ],
-      highlights: [
-        'FSSAI 5-Star Clean & Hygiene Campus Certified',
-        'Special Jain & Sattvik preparation counters available upon request',
-        'Festival Music, Ambient Lighting & Special Dining Hall Decor'
-      ],
-      dietaryNotes: '100% Pure Vegetarian & Halal options clearly separated with dedicated serving stations'
-    };
 
     const festivalSpecial = liveFestivalOverride 
       ? { ...defaultFestivalSpecial, ...liveFestivalOverride } 
@@ -118,16 +130,219 @@ router.get('/', async (_req: Request, res: Response) => {
       festivalSpecial
     });
   } catch (error) {
+    console.error('Failed to fetch mess menu:', error);
     return res.status(500).json({ error: 'Failed to fetch mess menu' });
   }
 });
 
-// Admin endpoint to quickly update today's menu in one click
+// 2. ADMIN: ADD A SINGLE DISH TO ANY DAY + MEAL (Shows instantly to all students)
+router.post('/add-dish', async (req: Request, res: Response) => {
+  try {
+    const { dayOfWeek, mealType, dishName, specialNote } = req.body;
+    if (!dayOfWeek || !mealType || !dishName || !dishName.trim()) {
+      return res.status(400).json({ error: 'dayOfWeek, mealType, and dishName are required' });
+    }
+
+    const cleanDay = dayOfWeek.toUpperCase();
+    const cleanMeal = mealType.toUpperCase();
+    const newDish = dishName.trim();
+
+    // Check existing item in DB
+    const existing = await prisma.menuItem.findFirst({
+      where: { dayOfWeek: cleanDay, mealType: cleanMeal }
+    });
+
+    let currentItemsString = '';
+    if (existing && existing.items) {
+      currentItemsString = existing.items;
+    } else if (liveScheduleOverrides[cleanDay]?.[cleanMeal]) {
+      currentItemsString = liveScheduleOverrides[cleanDay][cleanMeal];
+    } else if (DEFAULT_WEEK_SCHEDULE[cleanDay]?.[cleanMeal as keyof typeof DEFAULT_WEEK_SCHEDULE['MONDAY']]) {
+      currentItemsString = DEFAULT_WEEK_SCHEDULE[cleanDay][cleanMeal as keyof typeof DEFAULT_WEEK_SCHEDULE['MONDAY']];
+    }
+
+    // Append dish if not duplicate
+    const currentList = currentItemsString
+      ? currentItemsString.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    if (!currentList.includes(newDish)) {
+      currentList.push(newDish);
+    }
+    const updatedItems = currentList.join(', ');
+
+    // Persist to database
+    if (existing) {
+      await prisma.menuItem.update({
+        where: { id: existing.id },
+        data: { items: updatedItems, specialNote: specialNote || existing.specialNote }
+      });
+    } else {
+      await prisma.menuItem.create({
+        data: { dayOfWeek: cleanDay, mealType: cleanMeal, items: updatedItems, specialNote }
+      });
+    }
+
+    // Update in-memory overrides
+    if (!liveScheduleOverrides[cleanDay]) {
+      liveScheduleOverrides[cleanDay] = {};
+    }
+    liveScheduleOverrides[cleanDay][cleanMeal] = updatedItems;
+
+    // Broadcast live to all connected student devices
+    broadcastMenuUpdate({
+      day: cleanDay,
+      mealType: cleanMeal,
+      dishAdded: newDish,
+      updatedItems,
+      todayMeals: liveScheduleOverrides[cleanDay],
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log(`[Mess Menu] Admin added "${newDish}" to ${cleanDay} ${cleanMeal}. Broadcasted to students.`);
+
+    return res.json({
+      success: true,
+      message: `"${newDish}" added to ${cleanDay} ${cleanMeal} and published live to all students!`,
+      dayOfWeek: cleanDay,
+      mealType: cleanMeal,
+      items: updatedItems
+    });
+  } catch (error) {
+    console.error('Failed to add dish:', error);
+    return res.status(500).json({ error: 'Failed to add dish to mess menu' });
+  }
+});
+
+// 3. ADMIN: REMOVE A DISH FROM A MEAL SLOT
+router.post('/remove-dish', async (req: Request, res: Response) => {
+  try {
+    const { dayOfWeek, mealType, dishName } = req.body;
+    if (!dayOfWeek || !mealType || !dishName) {
+      return res.status(400).json({ error: 'dayOfWeek, mealType, and dishName are required' });
+    }
+
+    const cleanDay = dayOfWeek.toUpperCase();
+    const cleanMeal = mealType.toUpperCase();
+    const dishToRemove = dishName.trim();
+
+    const existing = await prisma.menuItem.findFirst({
+      where: { dayOfWeek: cleanDay, mealType: cleanMeal }
+    });
+
+    let currentItemsString = '';
+    if (existing && existing.items) {
+      currentItemsString = existing.items;
+    } else if (liveScheduleOverrides[cleanDay]?.[cleanMeal]) {
+      currentItemsString = liveScheduleOverrides[cleanDay][cleanMeal];
+    } else if (DEFAULT_WEEK_SCHEDULE[cleanDay]?.[cleanMeal as keyof typeof DEFAULT_WEEK_SCHEDULE['MONDAY']]) {
+      currentItemsString = DEFAULT_WEEK_SCHEDULE[cleanDay][cleanMeal as keyof typeof DEFAULT_WEEK_SCHEDULE['MONDAY']];
+    }
+
+    const updatedList = currentItemsString
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter((s: string) => s && s.toLowerCase() !== dishToRemove.toLowerCase());
+
+    const updatedItems = updatedList.join(', ');
+
+    if (existing) {
+      await prisma.menuItem.update({
+        where: { id: existing.id },
+        data: { items: updatedItems }
+      });
+    } else {
+      await prisma.menuItem.create({
+        data: { dayOfWeek: cleanDay, mealType: cleanMeal, items: updatedItems }
+      });
+    }
+
+    if (!liveScheduleOverrides[cleanDay]) {
+      liveScheduleOverrides[cleanDay] = {};
+    }
+    liveScheduleOverrides[cleanDay][cleanMeal] = updatedItems;
+
+    broadcastMenuUpdate({
+      day: cleanDay,
+      mealType: cleanMeal,
+      dishRemoved: dishToRemove,
+      updatedItems,
+      todayMeals: liveScheduleOverrides[cleanDay],
+      updatedAt: new Date().toISOString()
+    });
+
+    return res.json({
+      success: true,
+      message: `"${dishToRemove}" removed from ${cleanDay} ${cleanMeal}`,
+      dayOfWeek: cleanDay,
+      mealType: cleanMeal,
+      items: updatedItems
+    });
+  } catch (error) {
+    console.error('Failed to remove dish:', error);
+    return res.status(500).json({ error: 'Failed to remove dish' });
+  }
+});
+
+// 4. ADMIN: UPDATE COMPLETE SLOT (BREAKFAST, LUNCH, SNACKS, OR DINNER)
+router.post('/update-slot', async (req: Request, res: Response) => {
+  try {
+    const { dayOfWeek, mealType, items, specialNote } = req.body;
+    if (!dayOfWeek || !mealType || items === undefined) {
+      return res.status(400).json({ error: 'dayOfWeek, mealType, and items are required' });
+    }
+
+    const cleanDay = dayOfWeek.toUpperCase();
+    const cleanMeal = mealType.toUpperCase();
+    const cleanItems = items.trim();
+
+    const existing = await prisma.menuItem.findFirst({
+      where: { dayOfWeek: cleanDay, mealType: cleanMeal }
+    });
+
+    if (existing) {
+      await prisma.menuItem.update({
+        where: { id: existing.id },
+        data: { items: cleanItems, specialNote }
+      });
+    } else {
+      await prisma.menuItem.create({
+        data: { dayOfWeek: cleanDay, mealType: cleanMeal, items: cleanItems, specialNote }
+      });
+    }
+
+    if (!liveScheduleOverrides[cleanDay]) {
+      liveScheduleOverrides[cleanDay] = {};
+    }
+    liveScheduleOverrides[cleanDay][cleanMeal] = cleanItems;
+
+    broadcastMenuUpdate({
+      day: cleanDay,
+      mealType: cleanMeal,
+      updatedItems: cleanItems,
+      todayMeals: liveScheduleOverrides[cleanDay],
+      updatedAt: new Date().toISOString()
+    });
+
+    return res.json({
+      success: true,
+      message: `${cleanDay} ${cleanMeal} updated and published live!`,
+      dayOfWeek: cleanDay,
+      mealType: cleanMeal,
+      items: cleanItems
+    });
+  } catch (error) {
+    console.error('Failed to update slot:', error);
+    return res.status(500).json({ error: 'Failed to update slot' });
+  }
+});
+
+// 5. ADMIN: UPDATE ENTIRE DAY (BREAKFAST + LUNCH + SNACKS + DINNER)
 router.post('/update-today', async (req: Request, res: Response) => {
   try {
     const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const todayName = daysMap[new Date().getDay()];
-    const targetDay = req.body.dayOfWeek || todayName;
+    const targetDay = (req.body.dayOfWeek || todayName).toUpperCase();
     const { 
       breakfast, 
       lunch, 
@@ -141,16 +356,15 @@ router.post('/update-today', async (req: Request, res: Response) => {
       highlights 
     } = req.body;
 
-    // Update in-memory live overrides
     if (!liveScheduleOverrides[targetDay]) {
       liveScheduleOverrides[targetDay] = {};
     }
 
     const mealUpdates: Record<string, string> = {};
-    if (breakfast) mealUpdates['BREAKFAST'] = breakfast;
-    if (lunch) mealUpdates['LUNCH'] = lunch;
-    if (snacks) mealUpdates['SNACKS'] = snacks;
-    if (dinner) mealUpdates['DINNER'] = dinner;
+    if (breakfast !== undefined) mealUpdates['BREAKFAST'] = breakfast.trim();
+    if (lunch !== undefined) mealUpdates['LUNCH'] = lunch.trim();
+    if (snacks !== undefined) mealUpdates['SNACKS'] = snacks.trim();
+    if (dinner !== undefined) mealUpdates['DINNER'] = dinner.trim();
 
     liveScheduleOverrides[targetDay] = {
       ...liveScheduleOverrides[targetDay],
@@ -203,42 +417,51 @@ router.post('/update-today', async (req: Request, res: Response) => {
 
     return res.json({ 
       success: true, 
-      message: 'Mess menu updated and broadcast live to all student devices!',
+      message: `Mess menu for ${targetDay} updated and broadcast live to all student devices!`,
       todayMeals: liveScheduleOverrides[targetDay],
       festivalSpecial: liveFestivalOverride
     });
   } catch (error) {
     console.error('Update menu error:', error);
-    return res.status(500).json({ error: 'Failed to update today mess menu' });
+    return res.status(500).json({ error: 'Failed to update mess menu' });
   }
 });
 
-router.put('/update', authMiddleware, async (req: Request, res: Response) => {
+// 6. ADMIN: RESET ALL 7 DAYS TO RICH CAMPUS DEFAULTS
+router.post('/reset-defaults', async (_req: Request, res: Response) => {
   try {
-    const { dayOfWeek, mealType, items, specialNote } = req.body;
-    
-    // Upsert menuItem
-    const existing = await prisma.menuItem.findFirst({
-      where: { dayOfWeek, mealType }
-    });
+    // Delete custom DB rows
+    await prisma.menuItem.deleteMany();
 
-    if (existing) {
-      await prisma.menuItem.update({
-        where: { id: existing.id },
-        data: { items, specialNote }
-      });
-    } else {
-      await prisma.menuItem.create({
-        data: { dayOfWeek, mealType, items, specialNote }
-      });
+    // Populate fresh rows for all 7 days x 4 meals
+    for (const [day, meals] of Object.entries(DEFAULT_WEEK_SCHEDULE)) {
+      for (const [mealType, items] of Object.entries(meals)) {
+        await prisma.menuItem.create({
+          data: { dayOfWeek: day, mealType, items }
+        });
+      }
     }
 
-    return res.json({ success: true, message: 'Menu updated successfully' });
+    liveScheduleOverrides = {};
+    liveFestivalOverride = null;
+
+    broadcastMenuUpdate({
+      reset: true,
+      updatedAt: new Date().toISOString()
+    });
+
+    return res.json({
+      success: true,
+      message: 'Mess menu reset to 7-day campus standard for all students!',
+      schedule: DEFAULT_WEEK_SCHEDULE
+    });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update menu' });
+    console.error('Reset menu error:', error);
+    return res.status(500).json({ error: 'Failed to reset menu' });
   }
 });
 
+// 7. EATING HEADCOUNT TOGGLE (STUDENT RSVP)
 router.post('/eating-today', authMiddleware, async (req: Request, res: Response) => {
   const { mealType, isEating } = req.body;
   const key = (mealType?.toLowerCase() || 'dinner') as keyof typeof eatingHeadcount;
@@ -249,4 +472,3 @@ router.post('/eating-today', authMiddleware, async (req: Request, res: Response)
 });
 
 export default router;
-

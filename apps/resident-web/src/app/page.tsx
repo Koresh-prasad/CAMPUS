@@ -70,6 +70,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
 import { Language, getResidentTranslation } from '../lib/i18n';
+import { playCuteNotificationSound, playCuteSuccessSound } from '../lib/audioSound';
 
 const API_BASE = '/api';
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
@@ -1346,6 +1347,7 @@ export default function ResidentApp() {
       });
 
       if (res.ok) {
+        playCuteSuccessSound();
         setShowComplaintModal(false);
         setComplaintTitle('');
         setComplaintDesc('');
@@ -2207,6 +2209,15 @@ export default function ResidentApp() {
             </button>
 
             <button
+              onClick={() => playCuteNotificationSound()}
+              title="Test cute notification sound ✨"
+              className="px-2 py-1.5 bg-pink-500/25 text-pink-200 hover:bg-pink-500/35 rounded-xl border border-pink-400/40 text-[11px] font-bold transition flex items-center space-x-1 cursor-pointer active:scale-95"
+            >
+              <span>🔔</span>
+              <span className="hidden sm:inline">Cute Sound</span>
+            </button>
+
+            <button
               onClick={() => setShowEditProfileModal(true)}
               title="Edit Student Profile & Picture"
               className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md transition border border-white/15 flex items-center space-x-1 text-xs font-semibold cursor-pointer shadow-sm"
@@ -2330,6 +2341,64 @@ export default function ResidentApp() {
                 </div>
               </div>
             </div>
+
+            {/* Campus Landmark & Overview Showcase Card */}
+            <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-800 bg-slate-900/90 group">
+              <div className="relative h-44 md:h-56 w-full overflow-hidden">
+                <img
+                  src="/images/rec-campus-overview.jpg"
+                  alt="Raajdhani Engineering College [REC] Bhubaneswar Campus"
+                  className="w-full h-full object-cover object-center group-hover:scale-102 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex items-end p-4 md:p-5">
+                  <div className="text-white space-y-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider">
+                      CAMPUS HEADQUARTERS & RESIDENCE
+                    </span>
+                    <h3 className="text-base md:text-lg font-black tracking-tight">
+                      Raajdhani Engineering College [REC], Bhubaneswar
+                    </h3>
+                    <p className="text-xs text-slate-300 flex items-center space-x-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Near Mancheswar Railway Station, Mancheswar Railway Colony, Bhubaneswar, Odisha 751017</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-950/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-3 text-slate-400 text-[11px] font-medium">
+                  <span className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span>Hostel Block A & B</span>
+                  </span>
+                  <span className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span>Central Academic Block</span>
+                  </span>
+                  <span className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                    <span>Health Center Bay 5</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => window.open('https://maps.google.com/?q=Raajdhani+Engineering+College+Bhubaneswar', '_blank')}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center space-x-1"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>View Map</span>
+                  </button>
+                  <button
+                    onClick={() => window.open('https://rec.ac.in', '_blank')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition cursor-pointer"
+                  >
+                    College Info
+                  </button>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center space-x-1 bg-white/20 px-2.5 py-1.5 rounded-xl font-bold text-xs text-white">
               <span>{t.showQr}</span>
               <ChevronRight className="w-4 h-4" />
@@ -2363,6 +2432,49 @@ export default function ResidentApp() {
         {/* ========================================================= */}
         {activeTab === 'HOME' && (
           <div className="space-y-5">
+            {/* Campus Panoramic Welcome Banner */}
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-blue-500/30 min-h-[140px] md:min-h-[160px] flex items-center bg-[#07478a]">
+              {/* Campus Background Image */}
+              <img
+                src="/images/rec-campus-overview.jpg"
+                alt="Raajdhani Engineering College Campus"
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+
+              {/* Smooth Blue Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#034a94] via-[#085aa8]/90 via-35% md:via-45% to-transparent" />
+
+              {/* Banner Content */}
+              <div className="relative z-10 w-full p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-1.5 text-[10px] font-black uppercase text-blue-200 tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>REC Main Campus • Bhubaneswar</span>
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
+                    Welcome to CampusHelper
+                  </h2>
+                  <p className="text-xs md:text-sm text-blue-100 font-medium">
+                    Raajdhani Engineering College • Smart Resident & Hostel Portal
+                  </p>
+                </div>
+
+                {/* Floating Campus Badge */}
+                <div className="flex items-center space-x-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/50 text-slate-800 shadow-lg self-start sm:self-auto shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Building className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 pr-1 text-left">
+                    <p className="text-xs font-black text-slate-900 leading-tight">
+                      Raajdhani Engineering College
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      Bhubaneswar, Odisha
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Analogy 2: Single Banking App Replacing 5 Physical Office Visits */}
             <div className="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-purple-950/40 border border-blue-500/30 rounded-3xl p-3.5 space-y-2.5 shadow-lg">
               <div className="flex items-center justify-between">
@@ -3485,54 +3597,111 @@ export default function ResidentApp() {
                       </div>
 
                       {/* Breakfast */}
-                      <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1">
-                            <Coffee className="w-3 h-3 inline" />
-                            <span>BREAKFAST (7:30 AM - 9:30 AM)</span>
+                      <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Coffee className="w-3.5 h-3.5 inline text-amber-400" />
+                            <span>BREAKFAST (07:30 AM – 09:30 AM)</span>
+                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                            Morning Buffet
                           </span>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {meals.BREAKFAST}
-                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(meals.BREAKFAST || '')
+                            .split(',')
+                            .map((d) => d.trim())
+                            .filter(Boolean)
+                            .map((dish, i) => (
+                              <span
+                                key={i}
+                                className="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-semibold"
+                              >
+                                {dish}
+                              </span>
+                            ))}
+                        </div>
                       </div>
 
                       {/* Lunch */}
-                      <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider flex items-center space-x-1">
-                            <Sun className="w-3 h-3 inline" />
-                            <span>LUNCH (12:30 PM - 2:30 PM)</span>
+                      <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Sun className="w-3.5 h-3.5 inline text-blue-400" />
+                            <span>LUNCH (12:30 PM – 02:30 PM)</span>
+                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
+                            Full Buffet
                           </span>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {meals.LUNCH}
-                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(meals.LUNCH || '')
+                            .split(',')
+                            .map((d) => d.trim())
+                            .filter(Boolean)
+                            .map((dish, i) => (
+                              <span
+                                key={i}
+                                className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-200 text-xs font-semibold"
+                              >
+                                {dish}
+                              </span>
+                            ))}
+                        </div>
                       </div>
 
-                      {/* Snacks */}
-                      <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-black text-sky-400 uppercase tracking-wider">
-                            EVENING SNACKS (5:00 PM - 6:30 PM)
+                      {/* Evening Snacks */}
+                      <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Sparkles className="w-3.5 h-3.5 inline text-emerald-400" />
+                            <span>EVENING SNACKS (05:00 PM – 06:30 PM)</span>
+                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                            Hot Refreshments
                           </span>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {meals.SNACKS}
-                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(meals.SNACKS || '')
+                            .split(',')
+                            .map((d) => d.trim())
+                            .filter(Boolean)
+                            .map((dish, i) => (
+                              <span
+                                key={i}
+                                className="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs font-semibold"
+                              >
+                                {dish}
+                              </span>
+                            ))}
+                        </div>
                       </div>
 
                       {/* Dinner */}
-                      <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider flex items-center space-x-1">
-                            <Moon className="w-3 h-3 inline" />
-                            <span>DINNER (8:00 PM - 10:00 PM)</span>
+                      <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Moon className="w-3.5 h-3.5 inline text-purple-400" />
+                            <span>DINNER (08:00 PM – 10:00 PM)</span>
+                          </span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">
+                            Evening Feast
                           </span>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {meals.DINNER}
-                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(meals.DINNER || '')
+                            .split(',')
+                            .map((d) => d.trim())
+                            .filter(Boolean)
+                            .map((dish, i) => (
+                              <span
+                                key={i}
+                                className="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs font-semibold"
+                              >
+                                {dish}
+                              </span>
+                            ))}
+                        </div>
                       </div>
                     </div>
                   ))}

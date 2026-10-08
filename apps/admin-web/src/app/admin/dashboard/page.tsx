@@ -18,6 +18,8 @@ import SettingsView from '../../../components/SettingsView';
 import AdminGrievanceDeskView from '../../../components/AdminGrievanceDeskView';
 import AdminCentralizedReportsView from '../../../components/AdminCentralizedReportsView';
 import AdminAuditLogsView from '../../../components/AdminAuditLogsView';
+import { playCuteNotificationSound, playCuteSuccessSound } from '../../../lib/audioSound';
+import { AdminDashboardOverviewView } from './modules/AdminDashboardOverviewView';
 import {
   LayoutDashboard,
   Home,
@@ -73,6 +75,13 @@ import {
   ArrowRight,
   ArrowUpRight,
   Ticket,
+  Wifi,
+  Sparkles,
+  Lock,
+  QrCode,
+  ScanLine,
+  Video,
+  ShieldCheck,
 } from 'lucide-react';
 import { DASHBOARD_MOCK } from '../../../data/dashboardMock';
 import {
@@ -86,6 +95,22 @@ import {
   AdminCampusContactsView,
   AdminMyProfileView,
 } from './adminComponents';
+import { WardenManagementView } from './modules/WardenManagementView';
+import { MaintenanceScheduleView } from './modules/MaintenanceScheduleView';
+import { AssignedTasksView } from './modules/AssignedTasksView';
+import { InventoryManagementView } from './modules/InventoryManagementView';
+import { CleaningServicesView } from './modules/CleaningServicesView';
+import { WifiSupportView } from './modules/WifiSupportView';
+import { LostAndFoundView } from './modules/LostAndFoundView';
+import { TransportServiceView } from './modules/TransportServiceView';
+import { CampusConfigurationView } from './modules/CampusConfigurationView';
+import { UserRoleManagementView } from './modules/UserRoleManagementView';
+import { ComplaintServiceDetailModal, ServiceDetailItem } from './modules/ComplaintServiceDetailModal';
+import { NotificationCenterModal, AdminCampusNotification } from './modules/NotificationCenterModal';
+import { CctvOperationsView } from './modules/CctvOperationsView';
+import { SecurityGatePassScannerView } from './modules/SecurityGatePassScannerView';
+import { StudentProfileDrawer, ComprehensiveStudentProfile } from './modules/StudentProfileDrawer';
+import { AdminReportsAnalyticsView } from './modules/AdminReportsAnalyticsView';
 
 const API_BASE = '/api';
 
@@ -102,6 +127,334 @@ export default function AdminDashboardPage() {
   );
 }
 
+const SAMPLE_SERVICE_ITEMS: ServiceDetailItem[] = [
+  {
+    id: 'sr-1042',
+    ticketNumber: 'SR-2026-1042',
+    studentName: 'Subham Pradhan',
+    studentId: 'CS2023042',
+    studentRoll: 'REC-2023-CS042',
+    studentPhone: '+91 94370 12001',
+    studentEmail: 'subham.pradhan@rec.ac.in',
+    hostel: 'Nilgiri Block A',
+    block: 'Block A',
+    room: 'A-204',
+    category: 'Electricity',
+    description: 'Electricity not working in Room A-204. Ceiling fan stopped and study lamp sparking from wall socket.',
+    photoUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80',
+    priority: 'HIGH',
+    assignedTeam: 'Electrical Team',
+    assignedStaff: 'Er. Dilip Das (Lead Electrician)',
+    createdTime: 'Today, 08:30 AM',
+    slaHours: 2,
+    slaDeadline: 'Today, 10:30 AM',
+    slaStatus: 'APPROACHING',
+    slaMinutesRemaining: 28,
+    status: 'NEW',
+    timeline: [
+      { status: 'Submitted', timestamp: '08:30 AM', note: 'Student submitted via Resident Web App', actor: 'Subham Pradhan' },
+      { status: 'Assigned', timestamp: '08:35 AM', note: 'Auto-routed to Electrical Team', actor: 'System Dispatch' },
+    ],
+    internalNotes: [
+      { id: 'n-1', author: 'Chief Warden Dash', timestamp: '08:40 AM', text: 'Checked breaker on 2nd floor DB box; socket needs replacement.' },
+    ],
+  },
+  {
+    id: 'sr-1043',
+    ticketNumber: 'SR-2026-1043',
+    studentName: 'Ananya Pattnaik',
+    studentId: 'EC2023018',
+    studentRoll: 'REC-2023-EC018',
+    studentPhone: '+91 98610 22334',
+    studentEmail: 'ananya.p@rec.ac.in',
+    hostel: 'Shivalik Block B',
+    block: 'Block B',
+    room: 'B-312',
+    category: 'Plumbing',
+    description: 'Continuous water leakage from washbasin angle cock. Water dripping onto bathroom floor creating slip hazard.',
+    photoUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=400&q=80',
+    priority: 'HIGH',
+    assignedTeam: 'Plumbing Team',
+    assignedStaff: 'Mahendra Singh (Lead Plumber)',
+    createdTime: 'Today, 09:15 AM',
+    slaHours: 1,
+    slaDeadline: 'Today, 10:15 AM',
+    slaStatus: 'BREACHED',
+    slaMinutesRemaining: -12,
+    status: 'ASSIGNED',
+    timeline: [
+      { status: 'Submitted', timestamp: '09:15 AM', note: 'Student reported urgent bathroom leak', actor: 'Ananya Pattnaik' },
+      { status: 'Assigned', timestamp: '09:20 AM', note: 'Dispatched plumber Mahendra Singh', actor: 'Admin Dispatch' },
+    ],
+    internalNotes: [
+      { id: 'n-2', author: 'Estate Storekeeper', timestamp: '09:25 AM', text: 'Issued 1/2 inch ceramic tap spindle to technician.' },
+    ],
+  },
+  {
+    id: 'sr-1044',
+    ticketNumber: 'SR-2026-1044',
+    studentName: 'Rohan Verma',
+    studentId: 'ME2022089',
+    studentRoll: 'REC-2022-ME089',
+    studentPhone: '+91 97762 99881',
+    studentEmail: 'rohan.v@rec.ac.in',
+    hostel: 'Dhaulagiri Block C',
+    block: 'Block C',
+    room: 'C-118',
+    category: 'Wi-Fi / Internet',
+    description: 'Hostel corridor Wi-Fi AP-104 high latency and packet loss. Cannot attend scheduled online lab evaluation.',
+    priority: 'MEDIUM',
+    assignedTeam: 'IT / Network Team',
+    assignedStaff: 'Suresh Kumar (Network Tech)',
+    createdTime: 'Today, 07:45 AM',
+    slaHours: 4,
+    slaDeadline: 'Today, 11:45 AM',
+    slaStatus: 'ON_TRACK',
+    slaMinutesRemaining: 110,
+    status: 'IN_PROGRESS',
+    timeline: [
+      { status: 'Submitted', timestamp: '07:45 AM', note: 'Wi-Fi ticket logged', actor: 'Rohan Verma' },
+      { status: 'Assigned', timestamp: '08:00 AM', note: 'Assigned to IT Network team', actor: 'IT Helpdesk' },
+      { status: 'Work Started', timestamp: '08:30 AM', note: 'Suresh Kumar checking PoE switch port', actor: 'Suresh Kumar' },
+    ],
+    internalNotes: [],
+  },
+  {
+    id: 'sr-1045',
+    ticketNumber: 'SR-2026-1045',
+    studentName: 'Pooja Mohanty',
+    studentId: 'EE2024005',
+    studentRoll: 'REC-2024-EE005',
+    studentPhone: '+91 94371 88921',
+    studentEmail: 'pooja.m@rec.ac.in',
+    hostel: 'Shivalik Block B',
+    block: 'Block B',
+    room: 'B-108',
+    category: 'Cleaning',
+    description: 'Post-monsoon common washroom drainage clogged with fallen leaves and dust. Water accumulation in shower bay.',
+    priority: 'MEDIUM',
+    assignedTeam: 'Cleaning Team',
+    assignedStaff: 'Sita Majhi (Lead Housekeeper)',
+    createdTime: 'Today, 06:30 AM',
+    slaHours: 4,
+    slaDeadline: 'Today, 10:30 AM',
+    slaStatus: 'ON_TRACK',
+    slaMinutesRemaining: 45,
+    status: 'IN_PROGRESS',
+    timeline: [
+      { status: 'Submitted', timestamp: '06:30 AM', note: 'Housekeeping request raised', actor: 'Pooja Mohanty' },
+      { status: 'Work Started', timestamp: '07:00 AM', note: 'Housekeeping team dispatched', actor: 'Sita Majhi' },
+    ],
+    internalNotes: [],
+  },
+  {
+    id: 'sr-1046',
+    ticketNumber: 'SR-2026-1046',
+    studentName: 'Manish Ray',
+    studentId: 'CS2023110',
+    studentRoll: 'REC-2023-CS110',
+    studentPhone: '+91 98112 00011',
+    studentEmail: 'manish.r@rec.ac.in',
+    hostel: 'Nilgiri Block A',
+    block: 'Block A',
+    room: 'A-310',
+    category: 'Furniture',
+    description: 'Study table drawer slider stuck and cupboard lock cylinder jammed.',
+    priority: 'LOW',
+    assignedTeam: 'Maintenance Team',
+    assignedStaff: 'Baidhar Rout (Carpenter)',
+    createdTime: 'Yesterday, 04:00 PM',
+    slaHours: 24,
+    slaDeadline: 'Today, 04:00 PM',
+    slaStatus: 'ON_TRACK',
+    slaMinutesRemaining: 380,
+    status: 'ASSIGNED',
+    timeline: [
+      { status: 'Submitted', timestamp: 'Yesterday 04:00 PM', note: 'Carpentry request raised', actor: 'Manish Ray' },
+    ],
+    internalNotes: [],
+  },
+];
+
+const INITIAL_CENTRAL_NOTIFICATIONS: AdminCampusNotification[] = [
+  {
+    id: 'notif-1',
+    eventType: '🚨 SOS Emergency Alarm',
+    category: 'RED_URGENT',
+    studentName: 'Rahul Verma',
+    studentId: 'CS2023088',
+    location: 'Hostel Nilgiri Block A',
+    hostelRoom: 'Room A-112',
+    time: '4 mins ago',
+    priority: 'EMERGENCY',
+    currentStatus: 'DISPATCHED',
+    requiredAction: 'Immediate Medical Triage & Security Escort',
+    read: false,
+    targetTab: 'EMERGENCY',
+    relatedId: 'sr-1042',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-2',
+    eventType: '🏥 Acute Dehydration Case',
+    category: 'RED_URGENT',
+    studentName: 'Priya Das',
+    studentId: 'EC2023018',
+    location: 'Hostel Shivalik Block B',
+    hostelRoom: 'Room B-210',
+    time: '18 mins ago',
+    priority: 'EMERGENCY',
+    currentStatus: 'UNDER_TREATMENT',
+    requiredAction: 'Health Center Ambulance Triage',
+    read: false,
+    targetTab: 'MEDICAL',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-3',
+    eventType: '⚡ Electricity Outage & Sparking',
+    category: 'ORANGE_HIGH',
+    studentName: 'Subham Pradhan',
+    studentId: 'CS2023042',
+    location: 'Nilgiri Block A',
+    hostelRoom: 'Room A-204',
+    time: '32 mins ago',
+    priority: 'HIGH',
+    currentStatus: 'NEW',
+    requiredAction: 'Assign Electrician to Replace DB Socket',
+    read: false,
+    targetTab: 'SERVICES',
+    relatedId: 'sr-1042',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-4',
+    eventType: '🚰 Plumbing Washbasin Leak',
+    category: 'ORANGE_HIGH',
+    studentName: 'Ananya Pattnaik',
+    studentId: 'EC2023018',
+    location: 'Shivalik Block B',
+    hostelRoom: 'Room B-312',
+    time: '45 mins ago',
+    priority: 'HIGH',
+    currentStatus: 'ASSIGNED',
+    requiredAction: 'SLA Breached: Expedite Plumber Dispatch',
+    read: false,
+    targetTab: 'SERVICES',
+    relatedId: 'sr-1043',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-5',
+    eventType: '🚪 Gate Pass Overdue Notice',
+    category: 'ORANGE_HIGH',
+    studentName: 'Subham Pradhan',
+    studentId: 'CS2023042',
+    location: 'Main Gate Barrier #1',
+    hostelRoom: 'Room A-204',
+    time: '1 hour ago',
+    priority: 'HIGH',
+    currentStatus: 'OVERDUE',
+    requiredAction: 'Contact Student / Verify Return',
+    read: true,
+    targetTab: 'LEAVE_GATE_PASS',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-6',
+    eventType: '🧹 Washroom Sanitization',
+    category: 'BLUE_NORMAL',
+    studentName: 'Pooja Mohanty',
+    studentId: 'EE2024005',
+    location: 'Shivalik Block B',
+    hostelRoom: 'Room B-108',
+    time: '2 hours ago',
+    priority: 'MEDIUM',
+    currentStatus: 'IN_PROGRESS',
+    requiredAction: 'Housekeeping Supervisor Inspection',
+    read: true,
+    targetTab: 'CLEANING_SERVICES',
+    relatedId: 'sr-1045',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-7',
+    eventType: '📶 Corridor Wi-Fi Packet Loss',
+    category: 'BLUE_NORMAL',
+    studentName: 'Rohan Verma',
+    studentId: 'ME2022089',
+    location: 'Dhaulagiri Block C',
+    hostelRoom: 'Room C-118',
+    time: '3 hours ago',
+    priority: 'MEDIUM',
+    currentStatus: 'IN_PROGRESS',
+    requiredAction: 'PoE Switch Diagnostics by IT Team',
+    read: true,
+    targetTab: 'WIFI_SUPPORT',
+    relatedId: 'sr-1044',
+    dateGroup: 'TODAY',
+  },
+  {
+    id: 'notif-8',
+    eventType: '🪑 Study Table Repair',
+    category: 'BLUE_NORMAL',
+    studentName: 'Manish Ray',
+    studentId: 'CS2023110',
+    location: 'Nilgiri Block A',
+    hostelRoom: 'Room A-310',
+    time: 'Yesterday 04:00 PM',
+    priority: 'LOW',
+    currentStatus: 'ASSIGNED',
+    requiredAction: 'Carpenter Dispatch to Room',
+    read: true,
+    targetTab: 'SERVICES',
+    relatedId: 'sr-1046',
+    dateGroup: 'YESTERDAY',
+  },
+];
+
+const SAMPLE_STUDENT_PROFILE: ComprehensiveStudentProfile = {
+  id: 'stu-1',
+  name: 'Subham Pradhan',
+  studentId: 'CS2023042',
+  rollNumber: 'REC-2023-CS042',
+  email: 'subham.pradhan@rec.ac.in',
+  phone: '+91 94370 12001',
+  gender: 'Male',
+  bloodGroup: 'O+',
+  dob: '14 Nov 2003',
+  department: 'Computer Science & Engineering',
+  course: 'B.Tech CSE',
+  semester: '5th Semester (3rd Year)',
+  cgpa: '8.84',
+  attendancePercentage: 92,
+  hostel: 'Nilgiri Residence (Boys)',
+  block: 'Block A',
+  roomNumber: 'A-204',
+  accountStatus: 'ACTIVE',
+  emergencyContact: {
+    name: 'Pradeep Kumar Pradhan',
+    relation: 'Father',
+    phone: '+91 94371 55667',
+  },
+  gatePassHistory: [
+    { passId: 'GP-2026-8812', destination: 'Cuttack Home Visit', departure: 'Today, 04:30 PM', returned: 'Sunday, 08:00 PM', status: 'APPROVED' },
+    { passId: 'GP-2026-7201', destination: 'Bhubaneswar Railway Station', departure: '12 Sep 2026, 02:00 PM', returned: '14 Sep 2026, 06:00 PM', status: 'RETURNED' },
+  ],
+  serviceRequests: [
+    { id: 'SR-2026-1042', category: 'Electricity Outage', date: 'Today, 08:30 AM', status: 'NEW' },
+    { id: 'SR-2026-0810', category: 'Study Desk Hinge Repair', date: '18 Aug 2026', status: 'RESOLVED' },
+  ],
+  medicalHistory: [
+    { id: 'MED-2026-102', type: 'Health Center OPD Consultation (Viral Fever)', date: '02 Sep 2026', status: 'Treated', authorizedOnly: true },
+  ],
+  documents: [
+    { name: 'Semester 4 Grade Sheet.pdf', type: 'PDF', uploadDate: '15 Jul 2026' },
+    { name: 'Hostel Undertaking Form.pdf', type: 'PDF', uploadDate: '01 Aug 2026' },
+    { name: 'Anti-Ragging Affidavit.pdf', type: 'PDF', uploadDate: '01 Aug 2026' },
+  ],
+};
+
 function AdminPortalContent({
   user,
   token,
@@ -117,26 +470,38 @@ function AdminPortalContent({
     | 'DASHBOARD'
     | 'STUDENTS'
     | 'HOSTEL'
+    | 'WARDEN_OPS'
     | 'LEAVE_GATE_PASS'
-    | 'GRIEVANCES'
-    | 'VISITORS'
-    | 'EMERGENCY'
-    | 'REPORTS'
-    | 'SETTINGS'
-    // Operational Role Platforms
-    | 'WARDEN'
     | 'SERVICES'
+    | 'MAINTENANCE_SCHEDULE'
+    | 'ASSIGNED_TASKS'
+    | 'INVENTORY'
+    | 'CLEANING_SERVICES'
+    | 'WIFI_SUPPORT'
+    | 'MESS_MANAGEMENT'
     | 'SECURITY'
     | 'MEDICAL'
+    | 'VISITORS'
+    | 'EMERGENCY'
+    | 'LOST_FOUND'
+    | 'TRANSPORT'
+    | 'USER_ROLES'
+    | 'CAMPUS_CONFIG'
+    | 'SETTINGS'
+    | 'CCTV'
+    | 'SECURITY_SCANNER'
+    // Operational Role Platforms
+    | 'WARDEN'
     // Other administrative views
     | 'STAFF_ROLES'
     | 'NOTICES'
-    | 'MESS_MANAGEMENT'
     | 'CALENDAR'
     | 'GALLERY'
     | 'CONTACTS'
-    | 'AUDIT_LOGS'
     | 'MY_PROFILE'
+    | 'GRIEVANCES'
+    | 'REPORTS'
+    | 'AUDIT_LOGS'
     // Backwards-compatible aliases
     | 'STAFF'
     | 'DEPARTMENTS'
@@ -162,17 +527,18 @@ function AdminPortalContent({
     const updateTime = () => {
       try {
         const now = new Date();
-        const options: Intl.DateTimeFormatOptions = {
+        const dateStr = now.toLocaleDateString('en-GB', {
           weekday: 'short',
           day: '2-digit',
           month: 'short',
           year: 'numeric',
+        });
+        const timeStr = now.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
-        };
-        const formatted = now.toLocaleDateString('en-US', options);
-        setCurrentDateTime(formatted);
+        });
+        setCurrentDateTime(`${dateStr}  |  ${timeStr}`);
       } catch (err) {
         // fallback
       }
@@ -199,7 +565,7 @@ function AdminPortalContent({
     id: string;
     title: string;
     message: string;
-    type: 'EMERGENCY' | 'PASS' | 'COMPLAINT' | 'ADMISSION' | 'STAFF' | 'GENERAL';
+    type: 'EMERGENCY' | 'PASS' | 'COMPLAINT' | 'ADMISSION' | 'STAFF' | 'GENERAL' | 'MEDICAL' | 'QUERY';
     timestamp: string;
     read: boolean;
     targetTab?: AdminTab;
@@ -235,6 +601,25 @@ function AdminPortalContent({
   ]);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [activeSosAlert, setActiveSosAlert] = useState<any>(null);
+
+  // Operational State & Modal Integrations
+  const [currentAdminRole, setCurrentAdminRole] = useState<
+    | 'SUPER_ADMIN'
+    | 'CAMPUS_ADMIN'
+    | 'WARDEN'
+    | 'SECURITY'
+    | 'MAINTENANCE'
+    | 'IT_STAFF'
+    | 'MEDICAL_STAFF'
+  >('SUPER_ADMIN');
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [showNotificationCenterModal, setShowNotificationCenterModal] = useState(false);
+  const [showServiceDetailModal, setShowServiceDetailModal] = useState(false);
+  const [selectedServiceItem, setSelectedServiceItem] = useState<ServiceDetailItem | null>(null);
+  const [showStudentDrawer, setShowStudentDrawer] = useState(false);
+  const [selectedStudentForDrawer, setSelectedStudentForDrawer] = useState<ComprehensiveStudentProfile | null>(SAMPLE_STUDENT_PROFILE);
+  const [serviceTickets, setServiceTickets] = useState<ServiceDetailItem[]>(SAMPLE_SERVICE_ITEMS);
+  const [centralNotifications, setCentralNotifications] = useState<AdminCampusNotification[]>(INITIAL_CENTRAL_NOTIFICATIONS);
 
   // Departments List
   const departments = [
@@ -303,33 +688,9 @@ function AdminPortalContent({
     }
   };
 
-  // Web Audio Synthesizer Chime for Admin Instant Alert
+  // Cute Audio Synthesizer Chime for Admin Instant Alert
   const playAdminAudioChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const now = ctx.currentTime;
-      [
-        { freq: 523.25, time: 0.0 },
-        { freq: 659.25, time: 0.12 },
-        { freq: 783.99, time: 0.24 },
-        { freq: 1046.5, time: 0.36 },
-      ].forEach(({ freq, time }) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + time);
-        gain.gain.setValueAtTime(0.2, now + time);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + time + 0.3);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + time);
-        osc.stop(now + time + 0.3);
-      });
-    } catch (e) {
-      console.warn('Audio chime playback note:', e);
-    }
+    playCuteNotificationSound();
   };
 
   useEffect(() => {
@@ -437,18 +798,54 @@ function AdminPortalContent({
       setNotifications((prev) => [
         {
           id: `notif-cmp-${Date.now()}`,
-          title: `📝 Grievance #${data.ticketNumber || 'TKT'}`,
-          message: `${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) reported [${data.category || 'OTHER'}]`,
-          type: 'COMPLAINT',
+          title: data.category === 'MEDICAL'
+            ? `💊 Medical Request: ${data.residentName || 'Student'}`
+            : data.category === 'STUDENT_QUERY'
+            ? `💬 Student Query #${data.ticketNumber || 'QRY'}`
+            : `📝 Grievance #${data.ticketNumber || 'TKT'}`,
+          message: `${data.residentName || 'Student'} (${data.roomNumber || 'Room'}): ${data.title || data.description || data.category}`,
+          type: data.category === 'MEDICAL' ? 'MEDICAL' : data.category === 'STUDENT_QUERY' ? 'QUERY' : 'COMPLAINT',
           timestamp: 'Just now',
           read: false,
-          targetTab: 'GRIEVANCES',
+          targetTab: data.category === 'MEDICAL' ? 'MEDICAL' : 'GRIEVANCES',
           data,
         },
         ...prev,
       ]);
-      setSuccessMsg(`🚨 Grievance Alert #${data.ticketNumber || 'TKT'}: ${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) - [${data.category || 'OTHER'}]`);
-      setTimeout(() => setSuccessMsg(''), 7000);
+      setCentralNotifications((prev) => [
+        {
+          id: `notif-cmp-${Date.now()}`,
+          eventType: data.category === 'MEDICAL'
+            ? 'Medical Help Request'
+            : data.category === 'STUDENT_QUERY'
+            ? 'Student Query'
+            : 'Campus Grievance',
+          category: data.priority === 'CRITICAL' || data.priority === 'EMERGENCY'
+            ? 'RED_URGENT'
+            : data.priority === 'HIGH'
+            ? 'ORANGE_HIGH'
+            : 'BLUE_NORMAL',
+          studentName: data.residentName || 'Student Resident',
+          studentId: data.residentId || 'REC-STU',
+          location: data.blockName || 'Hostel',
+          hostelRoom: data.roomNumber || 'Room',
+          time: 'Just now',
+          priority: data.priority || 'MEDIUM',
+          currentStatus: 'NEW',
+          requiredAction: data.category === 'MEDICAL'
+            ? 'Doctor / Pharmacy Consultation'
+            : data.category === 'STUDENT_QUERY'
+            ? 'Answer Student Query'
+            : 'Assign Maintenance Staff',
+          read: false,
+          targetTab: data.category === 'MEDICAL' ? 'MEDICAL' : 'GRIEVANCES',
+          dateGroup: 'TODAY',
+          relatedId: data.ticketNumber || data.id,
+        },
+        ...prev,
+      ]);
+      setSuccessMsg(`🚨 Alert #${data.ticketNumber || 'TKT'}: ${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) - [${data.category || 'OTHER'}]`);
+      setTimeout(() => setSuccessMsg(''), 8000);
     };
 
     socket.on('complaint:created', handleComplaintIncoming);
@@ -499,6 +896,26 @@ function AdminPortalContent({
         },
         ...prev,
       ]);
+      setCentralNotifications((prev) => [
+        {
+          id: `notif-pass-${Date.now()}`,
+          eventType: 'Gate Pass / Leave Request',
+          category: 'ORANGE_HIGH',
+          studentName: data.studentName || data.residentName || 'Student Resident',
+          studentId: data.studentId || 'REC-STU',
+          location: data.destination || 'Campus Outing',
+          hostelRoom: data.roomNumber || 'Room',
+          time: 'Just now',
+          priority: 'HIGH',
+          currentStatus: 'PENDING',
+          requiredAction: 'Review and Approve Gate Pass',
+          read: false,
+          targetTab: 'LEAVE_GATE_PASS',
+          dateGroup: 'TODAY',
+          relatedId: data.passNumber || data.id,
+        },
+        ...prev,
+      ]);
       setSuccessMsg(`🚪 Gate Pass Request: ${data.studentName || 'Student'} (${data.roomNumber || 'Hostel'}) - [${data.destination || 'Outing'}]`);
       setTimeout(() => setSuccessMsg(''), 7000);
     };
@@ -525,6 +942,26 @@ function AdminPortalContent({
         },
         ...prev,
       ]);
+      setCentralNotifications((prev) => [
+        {
+          id: `notif-em-${Date.now()}`,
+          eventType: `🚨 SOS Alarm: ${data.emergencyType || 'CRITICAL'}`,
+          category: 'RED_URGENT',
+          studentName: data.residentName || 'Student Resident',
+          studentId: data.residentId || 'REC-STU',
+          location: data.locationDetails || 'Campus Hostel',
+          hostelRoom: data.roomNumber || 'Room',
+          time: 'Just now',
+          priority: 'EMERGENCY',
+          currentStatus: 'ACTIVE',
+          requiredAction: 'Immediate Campus Security & Medical Dispatch',
+          read: false,
+          targetTab: 'EMERGENCY',
+          dateGroup: 'TODAY',
+          relatedId: data.id,
+        },
+        ...prev,
+      ]);
       setSuccessMsg(`🚨 CRITICAL ALERT: Emergency SOS from ${data.residentName || 'Student'} at ${data.locationDetails || 'Hostel'}!`);
       setTimeout(() => setSuccessMsg(''), 10000);
     };
@@ -535,9 +972,30 @@ function AdminPortalContent({
       setActiveSosAlert(null);
     });
 
-    // 6. Unified Notification Event
+    // 6. Real-Time Student Medical Requests
+    socket.on('medical:request_created', (data: any) => {
+      console.log('💊 Real-time medical request incoming:', data);
+      playAdminAudioChime();
+      setSuccessMsg(`💊 Student Medical Help: ${data.studentName || 'Student'} (${data.room || data.roomNumber || 'Room'}) - ${data.description || 'Medicine requested'}`);
+      setTimeout(() => setSuccessMsg(''), 9000);
+    });
+
+    // 7. Real-Time Student Queries
+    socket.on('query:created', (data: any) => {
+      console.log('💬 Real-time student query incoming:', data);
+      playAdminAudioChime();
+      setSuccessMsg(`💬 New Student Query: ${data.residentName || data.studentName || 'Student'} asked "${data.title || data.description}"`);
+      setTimeout(() => setSuccessMsg(''), 9000);
+    });
+
+    // 8. Unified Notification Event
     socket.on('notification:new', (payload: any) => {
       console.log('📩 notification:new received in Admin Dashboard:', payload);
+      playAdminAudioChime();
+      if (payload.title) {
+        setSuccessMsg(`${payload.title}: ${payload.message || 'New student action received'}`);
+        setTimeout(() => setSuccessMsg(''), 8000);
+      }
       setNotifications((prev) => {
         const exists = prev.some((n) => n.id === payload.id);
         if (exists) return prev;
@@ -554,12 +1012,47 @@ function AdminPortalContent({
                 ? 'EMERGENCY'
                 : payload.type === 'PASS'
                 ? 'LEAVE_GATE_PASS'
-                : payload.type === 'COMPLAINT'
+                : payload.type === 'MEDICAL'
+                ? 'MEDICAL'
+                : payload.type === 'COMPLAINT' || payload.type === 'QUERY'
                 ? 'GRIEVANCES'
                 : payload.type === 'ADMISSION'
                 ? 'APPROVALS'
                 : 'DASHBOARD',
             data: payload.data,
+          },
+          ...prev,
+        ];
+      });
+      setCentralNotifications((prev) => {
+        const exists = prev.some((n) => n.id === payload.id);
+        if (exists) return prev;
+        return [
+          {
+            id: payload.id || `notif-${Date.now()}`,
+            eventType: payload.eventType || payload.title || 'Campus Event',
+            category: payload.category || (payload.type === 'EMERGENCY' ? 'RED_URGENT' : 'BLUE_NORMAL'),
+            studentName: payload.studentName || payload.data?.residentName || 'Student Resident',
+            studentId: payload.studentId || payload.data?.residentId || 'REC-STU',
+            location: payload.location || payload.data?.locationDetails || 'Campus',
+            hostelRoom: payload.hostelRoom || payload.data?.roomNumber || 'Room',
+            time: 'Just now',
+            priority: payload.priority || (payload.type === 'EMERGENCY' ? 'EMERGENCY' : 'MEDIUM'),
+            currentStatus: payload.currentStatus || 'NEW',
+            requiredAction: payload.requiredAction || 'Action required',
+            read: false,
+            targetTab:
+              payload.type === 'EMERGENCY'
+                ? 'EMERGENCY'
+                : payload.type === 'PASS'
+                ? 'LEAVE_GATE_PASS'
+                : payload.type === 'MEDICAL'
+                ? 'MEDICAL'
+                : payload.type === 'COMPLAINT' || payload.type === 'QUERY'
+                ? 'GRIEVANCES'
+                : 'DASHBOARD',
+            dateGroup: 'TODAY',
+            relatedId: payload.ticketNumber || payload.passNumber || payload.id,
           },
           ...prev,
         ];
@@ -667,9 +1160,9 @@ function AdminPortalContent({
     }
   };
 
-  // 9 Essential Admin Manager Modules (Exact specification)
+  // Complete Campus Operations Suite
   const adminModules = [
-    { id: 'DASHBOARD', label: 'Dashboard', icon: Home },
+    { id: 'DASHBOARD', label: 'Dashboard Overview', icon: Home },
     {
       id: 'STUDENTS',
       label: 'Student Management',
@@ -677,18 +1170,53 @@ function AdminPortalContent({
       badge: pendingStudents.length > 0 ? `${pendingStudents.length}` : '',
     },
     { id: 'HOSTEL', label: 'Hostel Management', icon: Building2 },
-    { id: 'LEAVE_GATE_PASS', label: 'Leave & Gate Pass', icon: FileText, badge: '18' },
+    { id: 'WARDEN_OPS', label: 'Warden Management', icon: Users },
+    { id: 'LEAVE_GATE_PASS', label: 'Leave & Gate Pass', icon: FileText, badge: '34' },
+    { id: 'SERVICES', label: 'Service Requests', icon: Wrench, badge: '18' },
     {
       id: 'GRIEVANCES',
-      label: 'Complaints & Grievances',
+      label: 'Student Queries & Grievances',
       icon: AlertTriangle,
-      badge: complaints.filter((c) => c.status === 'RAISED').length > 0 ? `${complaints.filter((c) => c.status === 'RAISED').length}` : '',
+      badge: complaints.filter((c) => c.status === 'RAISED' || c.status === 'IN_PROGRESS').length > 0
+        ? `${complaints.filter((c) => c.status === 'RAISED' || c.status === 'IN_PROGRESS').length}`
+        : '',
     },
-    { id: 'VISITORS', label: 'Visitor Management', icon: UserCheck, badge: '4' },
+    { id: 'SECURITY_SCANNER', label: 'Scan Gate Pass (QR)', icon: QrCode },
+    { id: 'CCTV', label: 'CCTV Surveillance', icon: Camera, badge: '7 Online' },
+    { id: 'MAINTENANCE_SCHEDULE', label: 'Maintenance Schedule', icon: Calendar, badge: '6' },
+    { id: 'ASSIGNED_TASKS', label: 'Assigned Staff Tasks', icon: ListTodo, badge: '14' },
+    { id: 'INVENTORY', label: 'Spare Parts & Inventory', icon: Package, badge: '4 Low' },
+    { id: 'CLEANING_SERVICES', label: 'Cleaning & Sanitation', icon: Sparkles },
+    { id: 'WIFI_SUPPORT', label: 'Wi-Fi & Internet Support', icon: Wifi, badge: '5' },
+    { id: 'MESS_MANAGEMENT', label: 'Mess Services', icon: Utensils },
+    { id: 'SECURITY', label: 'Security Operations', icon: Shield, badge: '1 Alert' },
+    { id: 'MEDICAL', label: 'Medical Care Desk', icon: HeartPulse, badge: '8' },
+    { id: 'REPORTS', label: 'Reports & Analytics', icon: FileText },
+    { id: 'AUDIT_LOGS', label: 'Audit Logs', icon: Clock },
+    { id: 'VISITORS', label: 'Visitor Management', icon: UserCheck, badge: '24' },
     { id: 'EMERGENCY', label: 'Emergency & SOS', icon: ShieldAlert, badge: activeSosAlert ? 'SOS' : '' },
-    { id: 'REPORTS', label: 'Reports & Analytics', icon: TrendingUp },
+    { id: 'LOST_FOUND', label: 'Lost & Found', icon: Package },
+    { id: 'TRANSPORT', label: 'Transport & Shuttles', icon: Car },
+    { id: 'USER_ROLES', label: 'User Roles & Access', icon: Lock },
+    { id: 'CAMPUS_CONFIG', label: 'Campus Configuration', icon: Building },
     { id: 'SETTINGS', label: 'College Settings', icon: Settings },
   ];
+
+  // RBAC Permission Scoping
+  const rolePermissionMap: Record<string, string[]> = {
+    SUPER_ADMIN: ['*'],
+    CAMPUS_ADMIN: ['DASHBOARD', 'STUDENTS', 'HOSTEL', 'SERVICES', 'GRIEVANCES', 'SECURITY', 'REPORTS', 'CAMPUS_CONFIG', 'AUDIT_LOGS', 'SETTINGS'],
+    WARDEN: ['DASHBOARD', 'STUDENTS', 'HOSTEL', 'WARDEN_OPS', 'LEAVE_GATE_PASS', 'GRIEVANCES', 'MESS_MANAGEMENT'],
+    SECURITY: ['DASHBOARD', 'SECURITY', 'SECURITY_SCANNER', 'CCTV', 'VISITORS', 'EMERGENCY'],
+    MAINTENANCE: ['DASHBOARD', 'SERVICES', 'MAINTENANCE_SCHEDULE', 'ASSIGNED_TASKS', 'INVENTORY', 'CLEANING_SERVICES'],
+    IT_STAFF: ['DASHBOARD', 'WIFI_SUPPORT', 'SERVICES', 'ASSIGNED_TASKS'],
+    MEDICAL_STAFF: ['DASHBOARD', 'MEDICAL', 'EMERGENCY'],
+  };
+
+  const allowedForCurrentRole = rolePermissionMap[currentAdminRole] || ['*'];
+  const visibleModules = adminModules.filter(
+    (m) => allowedForCurrentRole.includes('*') || allowedForCurrentRole.includes(m.id)
+  );
 
   // 4 Operational Role Platforms (Visually distinct cards from normal modules)
   const rolePlatforms = [
@@ -754,27 +1282,101 @@ function AdminPortalContent({
             </div>
           </div>
 
-          {/* Admin Role Selector Capsule */}
-          <div className="p-3 rounded-2xl bg-[#14203D] border border-slate-700/60 flex items-center justify-between shadow-xs">
-            <div className="flex items-center space-x-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-slate-800 text-sky-400 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
+          {/* Admin Role Selector Capsule (Interactive RBAC Switcher) */}
+          <div className="p-3 rounded-2xl bg-[#14203D] border border-slate-700/60 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold text-white truncate uppercase tracking-wider">Active Admin Role</p>
+                  <p className="text-[9px] text-sky-300 font-semibold truncate">Role-Based Access Control</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-white truncate">Admin Manager</p>
-                <p className="text-[10px] text-slate-400 truncate">Manage All Campus Operations</p>
-              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-600/30 text-blue-300 font-mono font-bold">
+                RBAC
+              </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
+            <select
+              value={currentAdminRole}
+              onChange={(e) => setCurrentAdminRole(e.target.value as any)}
+              className="w-full bg-[#0a1122] border border-slate-700 text-white text-xs font-semibold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="SUPER_ADMIN">⚡ Super Admin (Full Command)</option>
+              <option value="CAMPUS_ADMIN">🏛️ Campus Admin</option>
+              <option value="WARDEN">🏢 Hostel Warden</option>
+              <option value="MAINTENANCE">🔧 Maintenance &amp; Services</option>
+              <option value="SECURITY">🛡️ Security In-Charge</option>
+              <option value="MEDICAL_STAFF">🩺 Medical Officer</option>
+              <option value="IT_STAFF">💻 IT &amp; Systems Admin</option>
+            </select>
           </div>
 
-          {/* Section 1: ADMIN MANAGER (9 Focused Modules) */}
-          <div className="space-y-1">
-            <p className="px-2 pt-1 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-              Admin Manager
-            </p>
+          {/* Section 1: 4 CORE OPERATIONAL ROLE PLATFORMS (Elevated to Top of Sidebar) */}
+          <div className="space-y-2 pt-1">
+            <div className="px-2 flex items-center justify-between text-[10px] font-extrabold text-sky-400 uppercase tracking-wider">
+              <div className="flex items-center space-x-1.5">
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Operational Platforms</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 font-mono font-bold">
+                4 Hubs
+              </span>
+            </div>
+
+            {/* Modern 2x2 Command Deck Grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {rolePlatforms.map((role) => {
+                const Icon = role.icon;
+                const isCurrentTab = activeTab === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => router.push(role.href)}
+                    className={`p-2.5 rounded-xl border transition flex flex-col justify-between group cursor-pointer shadow-xs text-left ${
+                      role.cardBg
+                    } ${isCurrentTab ? 'ring-2 ring-white/30' : ''}`}
+                    title={`Open ${role.roleTitle}`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-1.5">
+                      <div className={`w-7 h-7 rounded-lg ${role.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white group-hover:text-white truncate">
+                        {role.label}
+                      </p>
+                      <p className="text-[9px] text-slate-300/80 truncate">
+                        {role.label === 'Warden'
+                          ? 'Hostel Welfare'
+                          : role.label === 'Service'
+                          ? 'Maintenance'
+                          : role.label === 'Security'
+                          ? 'Gate Control'
+                          : 'Health Clinic'}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: ADMIN MANAGER (Scoped by RBAC) */}
+          <div className="space-y-1 pt-2 border-t border-slate-800/70">
+            <div className="px-2 pt-1 pb-1 flex items-center justify-between">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                Admin Manager
+              </p>
+              <span className="text-[9px] text-slate-400 font-mono">
+                {visibleModules.length} Modules
+              </span>
+            </div>
             <nav className="space-y-1 text-xs">
-              {adminModules.map((item) => {
+              {visibleModules.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -810,46 +1412,6 @@ function AdminPortalContent({
                 );
               })}
             </nav>
-          </div>
-
-          {/* Section 2: ROLE PLATFORMS (4 Distinct Operational Team Cards) */}
-          <div className="space-y-2 pt-2 border-t border-slate-800/70">
-            <div className="px-2 flex items-center space-x-1.5 text-[10px] font-extrabold text-sky-400 uppercase tracking-wider">
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Role Platforms</span>
-            </div>
-
-            <div className="space-y-2">
-              {rolePlatforms.map((role) => {
-                const Icon = role.icon;
-                const isCurrentTab = activeTab === role.id;
-                return (
-                  <button
-                    key={role.id}
-                    onClick={() => router.push(role.href)}
-                    className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between group cursor-pointer shadow-xs ${
-                      role.cardBg
-                    } ${isCurrentTab ? 'ring-2 ring-white/30' : ''}`}
-                    title={`Open ${role.roleTitle}`}
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg ${role.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-white group-hover:text-white truncate">
-                          {role.label}
-                        </p>
-                        <p className="text-[10px] text-slate-300/80 truncate">
-                          {role.subtitle}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition shrink-0 ml-1" />
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
 
@@ -909,8 +1471,127 @@ function AdminPortalContent({
             </div>
           </div>
 
-          {/* Right: Notification Bell, Calendar/Time, College Selector */}
-          <div className="flex items-center space-x-3.5 shrink-0 ml-4">
+          {/* Emergency Indicator Capsule */}
+          <div className="hidden lg:flex items-center ml-3 shrink-0">
+            {activeSosAlert ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('EMERGENCY')}
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-800 text-xs font-black animate-pulse transition cursor-pointer shadow-xs"
+              >
+                <ShieldAlert className="w-4 h-4 text-rose-600 animate-bounce" />
+                <span>🚨 ACTIVE SOS EMERGENCY</span>
+              </button>
+            ) : (
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>🟢 ALL SYSTEMS SECURE</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Quick Action, Notification Bell, Calendar/Time, College Selector */}
+          <div className="flex items-center space-x-3 shrink-0 ml-4">
+            {/* Quick Action Button */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setQuickActionOpen(!quickActionOpen)}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Quick Action</span>
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+              </button>
+
+              {quickActionOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 p-2 space-y-1">
+                  <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Campus Operations
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('SECURITY_SCANNER');
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
+                  >
+                    <ScanLine className="w-4 h-4 text-blue-600" />
+                    <span>Scan Student Gate Pass</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('CCTV');
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                  >
+                    <Video className="w-4 h-4 text-slate-700" />
+                    <span>CCTV Surveillance Deck</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedServiceItem(serviceTickets[0]);
+                      setShowServiceDetailModal(true);
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-amber-50 hover:text-amber-800 transition cursor-pointer"
+                  >
+                    <Wrench className="w-4 h-4 text-amber-600" />
+                    <span>Review High Priority Ticket</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedStudentForDrawer(SAMPLE_STUDENT_PROFILE);
+                      setShowStudentDrawer(true);
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition cursor-pointer"
+                  >
+                    <UserCheck className="w-4 h-4 text-purple-600" />
+                    <span>View Student Master Profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('REPORTS');
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>Generate Multi-Domain Report</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNotificationCenterModal(true);
+                      setQuickActionOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
+                  >
+                    <BellRing className="w-4 h-4 text-rose-600" />
+                    <span>Open Notification Center</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Cute Notification Chime Sound Preview */}
+            <button
+              type="button"
+              onClick={() => playCuteNotificationSound()}
+              title="Click to hear the cute notification sound ✨"
+              className="px-2.5 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs flex items-center space-x-1.5 border border-pink-200 transition cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <span>🔔</span>
+              <span className="hidden sm:inline">Cute Sound</span>
+            </button>
+
             {/* Notification Bell with Dynamic Real-Time Unread Badge */}
             <div className="relative">
               <button
@@ -937,15 +1618,27 @@ function AdminPortalContent({
                       <BellRing className="w-4 h-4 text-amber-400" />
                       <span className="text-xs font-black tracking-wide">Live Campus Notifications</span>
                     </div>
-                    {notifications.some((n) => !n.read) && (
+                    <div className="flex items-center space-x-2">
                       <button
                         type="button"
-                        onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
-                        className="text-[10px] text-blue-300 hover:text-white underline font-bold cursor-pointer"
+                        onClick={() => {
+                          setShowNotificationCenterModal(true);
+                          setShowNotificationDropdown(false);
+                        }}
+                        className="text-[10px] text-amber-300 hover:text-white font-bold cursor-pointer underline"
                       >
-                        Mark all read
+                        Center
                       </button>
-                    )}
+                      {notifications.some((n) => !n.read) && (
+                        <button
+                          type="button"
+                          onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                          className="text-[10px] text-blue-300 hover:text-white underline font-bold cursor-pointer"
+                        >
+                          Mark read
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
@@ -1012,16 +1705,26 @@ function AdminPortalContent({
                     )}
                   </div>
 
-                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex flex-col space-y-1.5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNotificationCenterModal(true);
+                        setShowNotificationDropdown(false);
+                      }}
+                      className="w-full py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer"
+                    >
+                      Open Central Notification Center &rarr;
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
                         setActiveTab('NOTICES');
                         setShowNotificationDropdown(false);
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
+                      className="text-xs text-slate-500 hover:text-blue-600 font-semibold cursor-pointer"
                     >
-                      View All Campus Broadcasts &amp; Notices &rarr;
+                      View All Campus Broadcasts &amp; Notices
                     </button>
                   </div>
                 </div>
@@ -1090,970 +1793,23 @@ function AdminPortalContent({
           {/* MODULE 1: DASHBOARD OVERVIEW                              */}
           {/* ========================================================= */}
           {activeTab === 'DASHBOARD' && (
-            <div className="space-y-6">
-              {/* 1. Welcome Banner */}
-              <div className="relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-[#0A1628] min-h-[140px] flex items-center">
-                <img
-                  src="/images/rec-building.jpg"
-                  alt="Raajdhani Engineering College Campus"
-                  loading="lazy"
-                  className="absolute right-0 inset-y-0 w-1/2 h-full object-cover object-center opacity-40 mix-blend-luminosity"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#071328] via-[#0B1E3B]/90 to-transparent" />
-
-                <div className="relative z-10 w-full p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-sky-400">
-                      ADMIN MANAGER DASHBOARD
-                    </span>
-                    <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1">
-                      Good Morning, R. Subham Pradhan!
-                    </h2>
-                    <p className="text-xs text-slate-300 mt-1 font-medium">
-                      Manage your campus efficiently. Keep everything under control.
-                    </p>
-                    <div className="flex items-center space-x-2 text-slate-300 text-xs mt-3 bg-white/10 backdrop-blur-xs w-fit px-3 py-1 rounded-full border border-white/10">
-                      <Calendar className="w-3.5 h-3.5 text-sky-400" />
-                      <span>{currentDateTime}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/40 shadow-lg text-slate-800 self-start md:self-auto">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Building className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black text-slate-900 leading-tight truncate">
-                        Raajdhani Engineering College
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-medium">Bhubaneswar, Odisha</p>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Prominent Pending Admissions Notification Banner (Preserved for Instant Alert) */}
-              {pendingStudents.length > 0 && (
-                <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white p-4 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                      <UserCheck className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-white">
-                          Action Required
-                        </span>
-                        <h3 className="text-sm font-bold text-white">
-                          {pendingStudents.length} New Student Admission Request{pendingStudents.length > 1 ? 's' : ''} Awaiting Approval
-                        </h3>
-                      </div>
-                      <p className="text-xs text-amber-100 mt-0.5">
-                        Latest applicant: <strong>{pendingStudents[0].name}</strong> ({pendingStudents[0].course || 'B.Tech'}) • Room {pendingStudents[0].roomNumber || '101'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 shrink-0">
-                    <button
-                      onClick={() => handleApproveStudent(pendingStudents[0].id || pendingStudents[0].userId, pendingStudents[0].name)}
-                      className="px-3.5 py-2 bg-white text-slate-900 hover:bg-slate-100 rounded-xl text-xs font-black transition shadow-sm cursor-pointer"
-                    >
-                      Quick Approve {pendingStudents[0].name.split(' ')[0]}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('STUDENTS');
-                        setActiveSubTab('Admission Requests');
-                      }}
-                      className="px-3.5 py-2 bg-slate-950/40 hover:bg-slate-950/60 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                    >
-                      View All Requests ({pendingStudents.length}) →
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Top KPI Cards (Exact 7 KPI Cards) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                {/* 1. Total Students */}
-                <div
-                  onClick={() => { setActiveTab('STUDENTS'); setActiveSubTab(''); }}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-blue-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Total Students</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">2,485</h3>
-                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">↑ +12 this month</p>
-                  </div>
-                </div>
-
-                {/* 2. Hostel Occupancy (Circular SVG Ring) */}
-                <div
-                  onClick={() => { setActiveTab('HOSTEL'); setActiveSubTab(''); }}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-emerald-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                      <Bed className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Hostel Occupancy</p>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 tracking-tight">78%</h3>
-                      <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">1,237 / 1,580</p>
-                    </div>
-                    {/* Circular SVG Ring */}
-                    <div className="relative w-8 h-8 shrink-0">
-                      <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          className="text-slate-100"
-                          strokeWidth="3.5"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-blue-600"
-                          strokeDasharray="78, 100"
-                          strokeWidth="3.5"
-                          strokeLinecap="round"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Students Inside */}
-                <div
-                  onClick={() => router.push('/admin/security')}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-amber-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                      <Home className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Students Inside</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">2,342</h3>
-                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">96% on campus</p>
-                  </div>
-                </div>
-
-                {/* 4. Active Gate Passes */}
-                <div
-                  onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab(''); }}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-purple-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                      <Ticket className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Active Gate Passes</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">34</h3>
-                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">↑ +6 today</p>
-                  </div>
-                </div>
-
-                {/* 5. Pending Complaints */}
-                <div
-                  onClick={() => { setActiveTab('GRIEVANCES'); setActiveSubTab(''); }}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-rose-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Pending Complaints</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                      {complaints.filter((c) => c.status === 'RAISED').length || 24}
-                    </h3>
-                    <p className="text-[10px] text-rose-600 font-bold truncate mt-0.5">↓ 5 new</p>
-                  </div>
-                </div>
-
-                {/* 6. Medical Cases */}
-                <div
-                  onClick={() => router.push('/admin/medical')}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-teal-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-                      <HeartPulse className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Medical Cases</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">8</h3>
-                    <p className="text-[10px] text-rose-500 font-bold truncate mt-0.5">2 critical</p>
-                  </div>
-                </div>
-
-                {/* 7. Emergency Alerts */}
-                <div
-                  onClick={() => { setActiveTab('EMERGENCY'); setActiveSubTab(''); }}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-indigo-400 transition cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                      <ShieldAlert className="w-4 h-4" />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-600 truncate">Emergency Alerts</p>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">0</h3>
-                    <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">All safe</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Main Section: Campus Operations — Role Based Access (4 Large Cards) */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    Campus Operations — Role Based Access
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Quick access to your assigned modules and pending tasks.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4.5">
-                  {/* CARD 1: WARDEN (Green Theme) */}
-                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
-                    <div>
-                      {/* Top Row: Icon + Vector Illustration */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25">
-                          <Building2 className="w-5 h-5" />
-                        </div>
-                        {/* Custom Vector Illustration of Hostel Building */}
-                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
-                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
-                            <rect x="25" y="20" width="70" height="52" rx="3" fill="#E0F2FE" stroke="#0284C7" strokeWidth="1.5" />
-                            <path d="M20 20L60 4L100 20H20Z" fill="#0284C7" />
-                            <rect x="33" y="27" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="47" y="27" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="65" y="27" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="79" y="27" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="33" y="43" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="79" y="43" width="8" height="10" rx="1" fill="#0369A1" />
-                            <rect x="52" y="45" width="16" height="27" rx="1" fill="#0369A1" />
-                            <line x1="60" y1="45" x2="60" y2="72" stroke="#BAE6FD" strokeWidth="1.5" />
-                            <circle cx="12" cy="50" r="10" fill="#10B981" />
-                            <rect x="10" y="55" width="4" height="17" fill="#78350F" />
-                            <circle cx="108" cy="50" r="10" fill="#10B981" />
-                            <rect x="106" y="55" width="4" height="17" fill="#78350F" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <h4 className="text-base font-black text-slate-900 leading-tight">
-                          Warden Platform
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Manage hostel, students and wardens
-                        </p>
-                      </div>
-
-                      {/* Feature Checklist */}
-                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Hostel Management</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Student List & Allocation</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Leave & Gate Pass Approval</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Warden & Staff Management</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Hostel Complaints</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="mt-6 pt-2">
-                      <button
-                        onClick={() => router.push('/admin/warden')}
-                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <span>View Dashboard</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CARD 2: SERVICE (Orange Theme) */}
-                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-amber-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
-                    <div>
-                      {/* Top Row: Icon + Vector Illustration */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25">
-                          <Wrench className="w-5 h-5" />
-                        </div>
-                        {/* Custom Vector Illustration of Maintenance Worker */}
-                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
-                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
-                            <circle cx="70" cy="20" r="10" fill="#F59E0B" />
-                            <path d="M60 14Q70 9 82 14L86 16L82 18H60Z" fill="#D97706" />
-                            <path d="M52 42C52 32 60 28 70 28C80 28 88 32 88 42L84 72H56L52 42Z" fill="#F59E0B" />
-                            <path d="M60 40V68H80V40H60Z" fill="#D97706" />
-                            <path d="M86 48L102 34C104 32 108 32 110 34C112 36 112 40 110 42L94 56L86 48Z" fill="#94A3B8" />
-                            <circle cx="106" cy="38" r="3" fill="#FFFFFF" />
-                            <circle cx="28" cy="38" r="15" fill="#FFEDD5" stroke="#F97316" strokeWidth="2.5" strokeDasharray="5 3" />
-                            <circle cx="28" cy="38" r="6" fill="#F97316" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <h4 className="text-base font-black text-slate-900 leading-tight">
-                          Service Platform
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Maintenance & facility support
-                        </p>
-                      </div>
-
-                      {/* Feature Checklist */}
-                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Service Requests</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Maintenance Tracking</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Room & Campus Facilities</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Staff Management</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Issue Resolution</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="mt-6 pt-2">
-                      <button
-                        onClick={() => router.push('/admin/service')}
-                        className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <span>View Dashboard</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CARD 3: SECURITY (Purple Theme) */}
-                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
-                    <div>
-                      {/* Top Row: Icon + Vector Illustration */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25">
-                          <Shield className="w-5 h-5" />
-                        </div>
-                        {/* Custom Vector Illustration of Security Officer & CCTV */}
-                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
-                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
-                            <circle cx="48" cy="22" r="9" fill="#6366F1" />
-                            <path d="M36 17C36 13 42 11 48 11C54 11 60 13 60 17L62 19H34L36 17Z" fill="#312E81" />
-                            <rect x="42" y="18" width="12" height="2" fill="#E0E7FF" />
-                            <path d="M34 40C34 32 40 28 48 28C56 28 62 32 62 40L60 72H36L34 40Z" fill="#4338CA" />
-                            <path d="M46 30H50V70H46V30Z" fill="#E0E7FF" />
-                            <rect x="80" y="24" width="22" height="11" rx="2.5" fill="#312E81" transform="rotate(-15 80 24)" />
-                            <circle cx="98" cy="18" r="3.5" fill="#06B6D4" />
-                            <path d="M78 29L72 33" stroke="#6366F1" strokeWidth="2.5" />
-                            <rect x="70" y="32" width="3.5" height="12" fill="#312E81" />
-                            <path d="M98 26C103 29 106 34 106 40" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" strokeDasharray="2 2" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <h4 className="text-base font-black text-slate-900 leading-tight">
-                          Security Platform
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Campus safety & access control
-                        </p>
-                      </div>
-
-                      {/* Feature Checklist */}
-                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Gate Pass Management</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Visitor Management</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Security Staff</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Incident Reports</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Emergency Response</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="mt-6 pt-2">
-                      <button
-                        onClick={() => router.push('/admin/security')}
-                        className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <span>View Dashboard</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CARD 4: MEDICAL (Red Theme) */}
-                  <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-rose-500/80 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
-                    <div>
-                      {/* Top Row: Icon + Vector Illustration */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25">
-                          <HeartPulse className="w-5 h-5" />
-                        </div>
-                        {/* Custom Vector Illustration of Medical Doctor */}
-                        <div className="w-24 h-16 shrink-0 opacity-90 group-hover:scale-105 transition">
-                          <svg viewBox="0 0 120 75" fill="none" className="w-full h-full">
-                            <circle cx="68" cy="22" r="9" fill="#FB7185" />
-                            <path d="M58 20C58 14 64 10 72 10C80 10 84 16 84 22C84 22 80 18 72 18C64 18 60 21 58 20Z" fill="#4C0519" />
-                            <path d="M54 42C54 34 60 30 70 30C80 30 86 34 86 42L84 72H56L54 42Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1" />
-                            <path d="M64 32L69 44L74 32H64Z" fill="#38BDF8" />
-                            <path d="M60 34Q60 48 68 50Q76 48 76 34" stroke="#475569" strokeWidth="2" fill="none" />
-                            <circle cx="68" cy="52" r="3" fill="#94A3B8" />
-                            <circle cx="28" cy="38" r="12" fill="#FFE4E6" stroke="#F43F5E" strokeWidth="2" />
-                            <rect x="26" y="32" width="4" height="12" rx="1" fill="#E11D48" />
-                            <rect x="22" y="36" width="12" height="4" rx="1" fill="#E11D48" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <h4 className="text-base font-black text-slate-900 leading-tight">
-                          Medical Platform
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Health care & emergency support
-                        </p>
-                      </div>
-
-                      {/* Feature Checklist */}
-                      <ul className="mt-4 space-y-2 text-xs text-slate-600">
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Medical Records</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Health Center Patients</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Emergency Alerts</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Ambulance & Referral</span>
-                        </li>
-                        <li className="flex items-center space-x-2">
-                          <Check className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[3]" />
-                          <span className="font-medium">Health Reports</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="mt-6 pt-2">
-                      <button
-                        onClick={() => router.push('/admin/medical')}
-                        className="w-full py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs transition shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <span>View Dashboard</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Essential Quick Actions Bar */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
-                <span className="text-xs font-black text-slate-900 uppercase tracking-wider px-2">
-                  Quick Actions:
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => { setActiveTab('STUDENTS'); setActiveSubTab(''); }}
-                    className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>Add Student</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab('Leave Requests'); }}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Approve Leave</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('LEAVE_GATE_PASS'); setActiveSubTab('Gate Passes'); }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <Ticket className="w-3.5 h-3.5" />
-                    <span>Approve Gate Pass</span>
-                  </button>
-                  <button
-                    onClick={() => router.push('/admin/service')}
-                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <Wrench className="w-3.5 h-3.5" />
-                    <span>Create Service Request</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('NOTICES'); setActiveSubTab(''); }}
-                    className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <Megaphone className="w-3.5 h-3.5" />
-                    <span>Publish Notice</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('EMERGENCY'); setActiveSubTab(''); }}
-                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>View Emergency Alerts</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Bottom Dashboard: 3 Clean Columns (Recent Activities, Important Alerts, Upcoming/Pending Tasks) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* 1. RECENT ACTIVITIES */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                        <Activity className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Recent Activities</h3>
-                        <p className="text-[10px] text-slate-400 font-medium">Real-time operational stream</p>
-                      </div>
-                    </div>
-                    <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/60">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>Live Feed</span>
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
-                    {/* Activity 1 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <FileText className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Leave request received</p>
-                          <span className="text-[10px] text-slate-400 font-medium">5m ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">Amit Sharma (CSE - Block A) · Room 204</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60">Warden Approval Required</span>
-                      </div>
-                    </div>
-
-                    {/* Activity 2 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <Ticket className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Gate pass approved</p>
-                          <span className="text-[10px] text-slate-400 font-medium">14m ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">Priya Patel (Pass #GP-8841) · Weekend Outing</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200/60">Main Gate Verified</span>
-                      </div>
-                    </div>
-
-                    {/* Activity 3 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <Wrench className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Complaint submitted</p>
-                          <span className="text-[10px] text-slate-400 font-medium">32m ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">Water leakage in Block B, 3rd Floor Washroom</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/60">Grievance Desk</span>
-                      </div>
-                    </div>
-
-                    {/* Activity 4 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <Wrench className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Service request created</p>
-                          <span className="text-[10px] text-slate-400 font-medium">1h ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">AC repair in Computer Lab 4 · Assigned to Ramesh</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-orange-50 text-orange-700 border border-orange-200/60">Facility Maintenance</span>
-                      </div>
-                    </div>
-
-                    {/* Activity 5 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <Shield className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Security incident resolved</p>
-                          <span className="text-[10px] text-slate-400 font-medium">2h ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">Visitor ID mismatch cleared at North Gate</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">Security Desk</span>
-                      </div>
-                    </div>
-
-                    {/* Activity 6 */}
-                    <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition flex items-start space-x-3">
-                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <HeartPulse className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-800 truncate">Medical case registered</p>
-                          <span className="text-[10px] text-slate-400 font-medium">3h ago</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">First aid administered at Campus Health Centre</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200/60">Medical Care</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setActiveTab('AUDIT_LOGS')}
-                    className="mt-3 w-full py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
-                  >
-                    <span>View All Activity Logs</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* 2. IMPORTANT ALERTS */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <AlertTriangle className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Important Alerts</h3>
-                        <p className="text-[10px] text-slate-400 font-medium">Urgent attention & escalations</p>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/60">
-                      5 Active
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
-                    {/* Alert 1 */}
-                    <div className="p-3 rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50/70 transition space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-rose-800 text-xs font-bold">
-                          <HeartPulse className="w-3.5 h-3.5 text-rose-600" />
-                          <span>Medical emergency triage</span>
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">Critical</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600">Health Centre logged severe dehydration (Room 112). Physician on duty notified.</p>
-                      <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-medium">Health Centre · 12m ago</span>
-                        <button
-                          onClick={() => { setActiveTab('MEDICAL'); router.push('/admin/medical'); }}
-                          className="text-[11px] font-bold text-rose-700 hover:text-rose-900 flex items-center space-x-0.5 cursor-pointer"
-                        >
-                          <span>Review Case</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Alert 2 */}
-                    <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/40 hover:bg-amber-50/70 transition space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-amber-800 text-xs font-bold">
-                          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Unauthorized entry attempt</span>
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">Security</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600">Unregistered vehicle flagged at South Gate #2. Guard on site verified guest pass.</p>
-                      <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-medium">Security · 28m ago</span>
-                        <button
-                          onClick={() => { setActiveTab('SECURITY'); router.push('/admin/security'); }}
-                          className="text-[11px] font-bold text-amber-700 hover:text-amber-900 flex items-center space-x-0.5 cursor-pointer"
-                        >
-                          <span>Check Gate</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Alert 3 */}
-                    <div className="p-3 rounded-xl border border-blue-200/80 bg-blue-50/40 hover:bg-blue-50/70 transition space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-blue-800 text-xs font-bold">
-                          <FileText className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Pending leave approvals</span>
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">12 Pending</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600">12 weekend outstation leave applications awaiting chief warden authorization.</p>
-                      <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-medium">Hostel Desk · 45m ago</span>
-                        <button
-                          onClick={() => { setActiveTab('LEAVE_GATE_PASS'); }}
-                          className="text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center space-x-0.5 cursor-pointer"
-                        >
-                          <span>Approve All</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Alert 4 */}
-                    <div className="p-3 rounded-xl border border-orange-200/80 bg-orange-50/40 hover:bg-orange-50/70 transition space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center space-x-1.5 text-orange-800 text-xs font-bold">
-                          <Wrench className="w-3.5 h-3.5 text-orange-600" />
-                          <span>Critical maintenance issue</span>
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-800">Service</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600">Main water pump pressure dropped in Boys Hostel Block C. Plumber team assigned.</p>
-                      <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-medium">Facility · 1h ago</span>
-                        <button
-                          onClick={() => { setActiveTab('SERVICES'); router.push('/admin/service'); }}
-                          className="text-[11px] font-bold text-orange-700 hover:text-orange-900 flex items-center space-x-0.5 cursor-pointer"
-                        >
-                          <span>Track Ticket</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => { setActiveTab('EMERGENCY'); }}
-                    className="mt-3 w-full py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>Open Emergency Center</span>
-                  </button>
-                </div>
-
-                {/* 3. UPCOMING / PENDING TASKS */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                        <ListTodo className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">Upcoming / Pending Tasks</h3>
-                        <p className="text-[10px] text-slate-400 font-medium">Priority action list for today</p>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200/60">
-                      5 Tasks
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
-                    {/* Task 1 */}
-                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-blue-300 transition flex items-center justify-between gap-2.5">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-blue-600 cursor-pointer">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800">Review leave requests</p>
-                          <p className="text-[10px] text-slate-400">12 applications awaiting clearance</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('LEAVE_GATE_PASS')}
-                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
-                      >
-                        Review
-                      </button>
-                    </div>
-
-                    {/* Task 2 */}
-                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-emerald-300 transition flex items-center justify-between gap-2.5">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-emerald-600 cursor-pointer">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800">Approve gate passes</p>
-                          <p className="text-[10px] text-slate-400">34 active passes today · Roll call at 7 PM</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('LEAVE_GATE_PASS')}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
-                      >
-                        Approve
-                      </button>
-                    </div>
-
-                    {/* Task 3 */}
-                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-amber-300 transition flex items-center justify-between gap-2.5">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-amber-600 cursor-pointer">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800">Resolve complaints</p>
-                          <p className="text-[10px] text-slate-400">24 complaints open · 3 marked urgent</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('GRIEVANCES')}
-                        className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
-                      >
-                        Resolve
-                      </button>
-                    </div>
-
-                    {/* Task 4 */}
-                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-rose-300 transition flex items-center justify-between gap-2.5">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-rose-600 cursor-pointer">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800">Verify medical cases</p>
-                          <p className="text-[10px] text-slate-400">8 health clinic reports need follow-up</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => { setActiveTab('MEDICAL'); router.push('/admin/medical'); }}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
-                      >
-                        Verify
-                      </button>
-                    </div>
-
-                    {/* Task 5 */}
-                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:border-orange-300 transition flex items-center justify-between gap-2.5">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center mt-0.5 text-transparent hover:text-orange-600 cursor-pointer">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800">Follow up maintenance</p>
-                          <p className="text-[10px] text-slate-400">5 electrical & plumbing tickets in progress</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => { setActiveTab('SERVICES'); router.push('/admin/service'); }}
-                        className="px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 text-[10px] font-bold shrink-0 transition cursor-pointer"
-                      >
-                        Follow Up
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setActiveTab('CALENDAR')}
-                    className="mt-3 w-full py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
-                  >
-                    <span>View Campus Schedule</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Clean Footer Banner */}
-              <footer className="pt-3 pb-3 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-200/80 gap-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-2xs">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-bold text-slate-800 text-sm">CampusHelper</span>
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-600 font-medium">Safe Campus • Smart Management • Better Tomorrow</span>
-                </div>
-                <div className="flex items-center space-x-3 text-[11px] text-slate-400">
-                  <span className="flex items-center space-x-1.5 font-medium text-emerald-600">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Realtime Connected</span>
-                  </span>
-                  <span>•</span>
-                  <span>Raajdhani Engineering College (REC)</span>
-                  <span>•</span>
-                  <span>v2.4.0</span>
-                </div>
-              </footer>
-            </div>
+            <AdminDashboardOverviewView
+              user={user}
+              currentDateTime={currentDateTime}
+              activeSosAlert={activeSosAlert}
+              pendingStudents={pendingStudents}
+              serviceTickets={serviceTickets}
+              rolePlatforms={rolePlatforms}
+              onNavigateTab={(tab, subTab) => {
+                setActiveTab(tab as AdminTab);
+                if (subTab) setActiveSubTab(subTab);
+              }}
+              onOpenServiceModal={(item) => {
+                setSelectedServiceItem(item);
+                setShowServiceDetailModal(true);
+              }}
+              onApproveStudent={handleApproveStudent}
+            />
           )}
 
           {/* ========================================================= */}
@@ -2097,6 +1853,9 @@ function AdminPortalContent({
             />
           )}
 
+          {/* WARDEN OPERATIONS MANAGEMENT (Module 5) */}
+          {activeTab === 'WARDEN_OPS' && <WardenManagementView />}
+
           {/* ========================================================= */}
           {/* MODULE 5: LEAVE & GATE PASS                               */}
           {/* ========================================================= */}
@@ -2117,6 +1876,21 @@ function AdminPortalContent({
           {/* MODULE 7: SERVICE & MAINTENANCE                           */}
           {/* ========================================================= */}
           {activeTab === 'SERVICES' && <AdminServiceMaintenanceView />}
+
+          {/* MAINTENANCE SCHEDULE (Module 7) */}
+          {activeTab === 'MAINTENANCE_SCHEDULE' && <MaintenanceScheduleView />}
+
+          {/* ASSIGNED TASKS (Module 8) */}
+          {activeTab === 'ASSIGNED_TASKS' && <AssignedTasksView />}
+
+          {/* SPARE PARTS & INVENTORY (Module 9) */}
+          {activeTab === 'INVENTORY' && <InventoryManagementView />}
+
+          {/* CLEANING SERVICES (Module 11) */}
+          {activeTab === 'CLEANING_SERVICES' && <CleaningServicesView />}
+
+          {/* WI-FI / INTERNET SUPPORT (Module 12) */}
+          {activeTab === 'WIFI_SUPPORT' && <WifiSupportView />}
 
           {/* ========================================================= */}
           {/* MODULE 8: MEDICAL MANAGEMENT                              */}
@@ -2149,6 +1923,18 @@ function AdminPortalContent({
               activeAlerts={activeSosAlert ? [activeSosAlert] : []}
             />
           )}
+
+          {/* LOST & FOUND MANAGEMENT (Module 17) */}
+          {activeTab === 'LOST_FOUND' && <LostAndFoundView />}
+
+          {/* TRANSPORT SERVICE (Module 18) */}
+          {activeTab === 'TRANSPORT' && <TransportServiceView />}
+
+          {/* USER & ROLE GOVERNANCE (Module 20) */}
+          {activeTab === 'USER_ROLES' && <UserRoleManagementView />}
+
+          {/* CAMPUS CONFIGURATION (Module 19) */}
+          {activeTab === 'CAMPUS_CONFIG' && <CampusConfigurationView />}
 
           {/* ========================================================= */}
           {/* MODULE 12: NOTICES & BROADCASTS                           */}
@@ -2183,9 +1969,19 @@ function AdminPortalContent({
           {activeTab === 'CONTACTS' && <AdminCampusContactsView />}
 
           {/* ========================================================= */}
+          {/* CCTV SURVEILLANCE & SECURITY OPERATIONS                   */}
+          {/* ========================================================= */}
+          {activeTab === 'CCTV' && <CctvOperationsView />}
+
+          {/* ========================================================= */}
+          {/* GATE PASS VERIFICATION & TURNSTILE SCANNER                */}
+          {/* ========================================================= */}
+          {activeTab === 'SECURITY_SCANNER' && <SecurityGatePassScannerView />}
+
+          {/* ========================================================= */}
           {/* MODULE 17: REPORTS & ANALYTICS                            */}
           {/* ========================================================= */}
-          {activeTab === 'REPORTS' && <AdminCentralizedReportsView />}
+          {activeTab === 'REPORTS' && <AdminReportsAnalyticsView />}
 
           {/* ========================================================= */}
           {/* MODULE 18: COLLEGE SETTINGS                               */}
@@ -2289,6 +2085,118 @@ function AdminPortalContent({
           )}
         </main>
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL 1: COMPLAINT & SERVICE REQUEST DETAIL WORKFLOW VIEW */}
+      {/* ========================================================= */}
+      {showServiceDetailModal && selectedServiceItem && (
+        <ComplaintServiceDetailModal
+          item={selectedServiceItem}
+          onClose={() => {
+            setShowServiceDetailModal(false);
+            setSelectedServiceItem(null);
+          }}
+          onUpdateStatus={(id, newStatus, note) => {
+            setServiceTickets((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+            );
+            if (selectedServiceItem && selectedServiceItem.id === id) {
+              setSelectedServiceItem({ ...selectedServiceItem, status: newStatus });
+            }
+            setSuccessMsg(`✓ Status for ticket #${selectedServiceItem.ticketNumber} updated to ${newStatus}`);
+            setTimeout(() => setSuccessMsg(''), 4000);
+          }}
+          onAssignStaff={(id, team, staffName) => {
+            setServiceTickets((prev) =>
+              prev.map((t) =>
+                t.id === id ? { ...t, assignedTeam: team, assignedStaff: staffName, status: 'ASSIGNED' } : t
+              )
+            );
+            if (selectedServiceItem && selectedServiceItem.id === id) {
+              setSelectedServiceItem({
+                ...selectedServiceItem,
+                assignedTeam: team,
+                assignedStaff: staffName,
+                status: 'ASSIGNED',
+              });
+            }
+            setSuccessMsg(`✓ Staff ${staffName} assigned to #${selectedServiceItem.ticketNumber}`);
+            setTimeout(() => setSuccessMsg(''), 4000);
+          }}
+          onChangePriority={(id, priority) => {
+            setServiceTickets((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, priority } : t))
+            );
+            if (selectedServiceItem && selectedServiceItem.id === id) {
+              setSelectedServiceItem({ ...selectedServiceItem, priority });
+            }
+          }}
+          onAddNote={(id, noteText) => {
+            const newNote = {
+              id: `note-${Date.now()}`,
+              author: user.name || 'Admin Manager',
+              timestamp: 'Just now',
+              text: noteText,
+            };
+            setServiceTickets((prev) =>
+              prev.map((t) =>
+                t.id === id
+                  ? { ...t, internalNotes: [newNote, ...(t.internalNotes || [])] }
+                  : t
+              )
+            );
+            if (selectedServiceItem && selectedServiceItem.id === id) {
+              setSelectedServiceItem({
+                ...selectedServiceItem,
+                internalNotes: [newNote, ...(selectedServiceItem.internalNotes || [])],
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 2: CENTRAL REAL-TIME NOTIFICATION CENTER            */}
+      {/* ========================================================= */}
+      <NotificationCenterModal
+        isOpen={showNotificationCenterModal}
+        onClose={() => setShowNotificationCenterModal(false)}
+        notifications={centralNotifications}
+        onMarkAsRead={(id) => {
+          setCentralNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+          );
+        }}
+        onMarkAllAsRead={() => {
+          setCentralNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        }}
+        onSelectNotification={(notif) => {
+          setShowNotificationCenterModal(false);
+          if (notif.relatedId) {
+            const found = serviceTickets.find((t) => t.id === notif.relatedId);
+            if (found) {
+              setSelectedServiceItem(found);
+              setShowServiceDetailModal(true);
+              return;
+            }
+          }
+          if (notif.targetTab) {
+            setActiveTab(notif.targetTab as any);
+            setActiveSubTab('');
+          }
+        }}
+      />
+
+      {/* ========================================================= */}
+      {/* MODAL 3: STUDENT PROFILE & DIGITAL ID DRAWER              */}
+      {/* ========================================================= */}
+      <StudentProfileDrawer
+        student={selectedStudentForDrawer}
+        onClose={() => {
+          setShowStudentDrawer(false);
+          setSelectedStudentForDrawer(null);
+        }}
+      />
     </div>
   );
 }

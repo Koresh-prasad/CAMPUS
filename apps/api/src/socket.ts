@@ -91,17 +91,93 @@ export function broadcastPassUpdate(data: any) {
 
 export function broadcastComplaintUpdate(data: any) {
   if (!io) return;
-  console.log('[WebSocket Alert] Broadcasting complaint update:', data.ticketNumber);
+  console.log('[WebSocket Alert] Broadcasting complaint / query / medical update:', data.ticketNumber);
   io.emit(SOCKET_EVENTS.COMPLAINT_UPDATE, data);
   io.emit('complaint:update', data);
   io.emit('complaint:created', data);
   io.emit('complaint:raised', data);
+
+  const catUpper = String(data.category || '').toUpperCase();
+  const isMedical = catUpper.includes('MEDIC');
+  const isQuery = catUpper.includes('QUERY') || catUpper.includes('ACADEMIC') || catUpper.includes('HELPDESK');
+
+  if (isMedical) {
+    io.emit('medical:request_created', data);
+    io.emit('medical:update', data);
+  }
+
+  if (isQuery) {
+    io.emit('query:created', data);
+  }
+
+  const notificationCategory =
+    data.priority === 'CRITICAL' || data.priority === 'EMERGENCY'
+      ? 'RED_URGENT'
+      : data.priority === 'HIGH'
+      ? 'ORANGE_HIGH'
+      : 'BLUE_NORMAL';
+
+  const title = isMedical
+    ? `💊 Student Medical Help: ${data.residentName || 'Student'} (${data.roomNumber || 'Room'})`
+    : isQuery
+    ? `💬 Student Query #${data.ticketNumber || 'QRY'}: ${data.residentName || 'Student'}`
+    : `📝 Grievance #${data.ticketNumber || 'TKT'}: ${data.residentName || 'Student'}`;
+
+  const message = isMedical
+    ? `${data.title || data.description || 'Medical help / medicine requested'} [${data.priority || 'Normal'}]`
+    : isQuery
+    ? `${data.title || data.description || 'Student submitted a query'} (${data.roomNumber || 'Campus'})`
+    : `${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) reported [${data.category || 'Grievance'}]: ${data.title || data.description || ''}`;
+
+  const targetTab = isMedical ? 'MEDICAL' : 'GRIEVANCES';
+
   io.emit('notification:new', {
     id: `notif-cmp-${Date.now()}`,
-    title: `📝 New Grievance #${data.ticketNumber || 'TKT'}`,
-    message: `${data.residentName || 'Student'} (${data.roomNumber || 'Room'}) reported [${data.category || 'Grievance'}]`,
-    type: 'COMPLAINT',
+    title,
+    message,
+    eventType: isMedical ? 'Medical Help Request' : isQuery ? 'Student Query' : 'Campus Grievance',
+    type: isMedical ? 'MEDICAL' : isQuery ? 'QUERY' : 'COMPLAINT',
+    category: notificationCategory,
+    studentName: data.residentName || 'Student Resident',
+    studentId: data.residentId || 'REC-STU',
+    location: data.blockName || 'Hostel',
+    hostelRoom: data.roomNumber || 'Room',
+    priority: data.priority || 'MEDIUM',
+    currentStatus: 'NEW',
+    requiredAction: isMedical ? 'Provide Medicine / Consult Doctor' : isQuery ? 'Review and Answer Query' : 'Assign Maintenance Staff',
+    time: 'Just now',
     ticketNumber: data.ticketNumber,
+    read: false,
+    targetTab,
+    dateGroup: 'TODAY',
+    timestamp: new Date().toISOString(),
+    data
+  });
+}
+
+export function broadcastMedicalRequest(data: any) {
+  if (!io) return;
+  console.log('[WebSocket Alert] Broadcasting medical request:', data.ticketNumber || data.id);
+  io.emit('medical:request_created', data);
+  io.emit('medical:update', data);
+  io.emit('notification:new', {
+    id: `notif-med-${Date.now()}`,
+    title: `💊 Student Medical Request: ${data.studentName || 'Student'} (${data.room || data.roomNumber || 'Room'})`,
+    message: `${data.description || data.symptoms || 'Medicine / help requested'} [${data.urgency || 'Normal'}]`,
+    eventType: 'Student Medical Request',
+    type: 'MEDICAL',
+    category: data.urgency === 'EMERGENCY' ? 'RED_URGENT' : data.urgency === 'URGENT' ? 'ORANGE_HIGH' : 'BLUE_NORMAL',
+    studentName: data.studentName || 'Student Patient',
+    studentId: data.studentId || 'REC-STU',
+    location: data.hostel || 'Campus Hostel',
+    hostelRoom: data.room || data.roomNumber || 'Room',
+    priority: data.urgency === 'EMERGENCY' ? 'EMERGENCY' : data.urgency === 'URGENT' ? 'HIGH' : 'MEDIUM',
+    currentStatus: 'NEW',
+    requiredAction: 'Campus Doctor / Pharmacy Consultation',
+    time: 'Just now',
+    read: false,
+    targetTab: 'MEDICAL',
+    dateGroup: 'TODAY',
     timestamp: new Date().toISOString(),
     data
   });

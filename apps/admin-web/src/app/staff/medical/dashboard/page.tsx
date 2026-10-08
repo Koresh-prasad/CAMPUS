@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import RoleGuard from '../../../../components/RoleGuard';
 import {
   Heart,
@@ -43,7 +44,9 @@ import {
   CheckCheck,
   MapPin,
   Camera,
+  Sparkles,
 } from 'lucide-react';
+import { playCuteNotificationSound } from '../../../../lib/audioSound';
 
 import {
   MedicalTab,
@@ -58,6 +61,9 @@ import {
   AmbulanceReferralRecord,
   MedicalReportItem,
   MedicalOfficerProfile,
+  PharmacistProfile,
+  StudentMedicineDispenseRecord,
+  EmergencyVehicleFleet,
 } from './types';
 
 import {
@@ -69,6 +75,9 @@ import {
   INITIAL_MEDICINE_INVENTORY,
   INITIAL_AMBULANCE_REFERRALS,
   INITIAL_MEDICAL_REPORTS,
+  INITIAL_PHARMACIST_PROFILE,
+  INITIAL_EMERGENCY_VEHICLE_FLEET,
+  INITIAL_STUDENT_DISPENSATIONS,
 } from './mockData';
 
 import {
@@ -78,6 +87,7 @@ import {
   AmbulanceReferralModal,
   AddMedicineModal,
   MedicalHelpModal,
+  DispenseMedicineModal,
 } from './modals';
 
 const API_BASE = '/api';
@@ -130,6 +140,13 @@ function MedicalPortalContent({
   const [inventory, setInventory] = useState<MedicineInventoryItem[]>(INITIAL_MEDICINE_INVENTORY);
   const [referrals, setReferrals] = useState<AmbulanceReferralRecord[]>(INITIAL_AMBULANCE_REFERRALS);
   const [reports, setReports] = useState<MedicalReportItem[]>(INITIAL_MEDICAL_REPORTS);
+
+  // Student Platform Medical Sync States
+  const [pharmacist, setPharmacist] = useState<PharmacistProfile>(INITIAL_PHARMACIST_PROFILE);
+  const [dispensations, setDispensations] = useState<StudentMedicineDispenseRecord[]>(INITIAL_STUDENT_DISPENSATIONS);
+  const [fleet, setFleet] = useState<EmergencyVehicleFleet>(INITIAL_EMERGENCY_VEHICLE_FLEET);
+  const [showDispenseModal, setShowDispenseModal] = useState(false);
+  const [inventoryFilter, setInventoryFilter] = useState<'ALL' | 'STUDENT_OTC' | 'PRESCRIPTION' | 'EQUIPMENT'>('ALL');
 
   // Filters & Search
   const [requestTypeFilter, setRequestTypeFilter] = useState<'ALL' | MedicalRequestType>('ALL');
@@ -212,7 +229,20 @@ function MedicalPortalContent({
           } catch (e) {}
         }
 
-        // 2. Sync from backend active emergency API
+        // 2. Sync from backend medical requests API
+        const medRes = await fetch(`${API_BASE}/medical/requests`, { credentials: 'omit' }).catch(() => null);
+        if (medRes && medRes.ok) {
+          const medData = await medRes.json();
+          if (Array.isArray(medData) && medData.length > 0) {
+            setRequests((prev) => {
+              const ids = new Set(prev.map((r) => r.id || r.ticketNumber));
+              const fresh = medData.filter((r: any) => !ids.has(r.id) && !ids.has(r.ticketNumber));
+              return [...fresh, ...prev];
+            });
+          }
+        }
+
+        // 3. Sync from backend active emergency API
         const emRes = await fetch(`${API_BASE}/emergency/active`, { credentials: 'omit' }).catch(() => null);
         if (emRes && emRes.ok) {
           const apiAlerts = await emRes.json();
@@ -248,8 +278,76 @@ function MedicalPortalContent({
     };
 
     syncMedicalEmergency();
-    const interval = setInterval(syncMedicalEmergency, 8000);
-    return () => clearInterval(interval);
+
+    // 4. Real-Time Socket Gateway for Doctor Console
+    const socket = io(API_BASE);
+    socket.on('medical:request_created', (data: any) => {
+      console.log('💊 Medical alert received in Doctor Dashboard:', data);
+      setRequests((prev) => {
+        const id = data.id || data.ticketNumber;
+        if (prev.some((r) => r.id === id || r.ticketNumber === data.ticketNumber)) return prev;
+        return [
+          {
+            id: id || `med-${Date.now()}`,
+            ticketNumber: data.ticketNumber || `MED-${Math.floor(1000 + Math.random() * 9000)}`,
+            studentName: data.studentName || data.residentName || 'Student Patient',
+            studentId: data.studentId || 'REC-STU',
+            studentRoll: data.studentRoll || 'REC-2023-CS042',
+            studentPhone: data.studentPhone || '+91 98765 43210',
+            parentPhone: data.parentPhone || '+91 94370 88990',
+            hostel: data.hostel || data.blockName || 'Campus Hostel',
+            room: data.room || data.roomNumber || 'Room',
+            requestType: (data.urgency === 'EMERGENCY' ? 'Emergency' : 'Doctor Consultation') as MedicalRequestType,
+            description: data.description || 'Medical help requested',
+            urgency: data.urgency || 'NORMAL',
+            dateTime: 'Just now',
+            status: 'New',
+            attendingStaff: 'Dr. Pratima Mishra, MD',
+          },
+          ...prev,
+        ];
+      });
+      playCuteNotificationSound();
+      setToastMsg(`🚨 New Student Medical Request: ${data.studentName || 'Student'} (${data.room || 'Room'}) - ${data.description || 'Medicine requested'}`);
+      setTimeout(() => setToastMsg(''), 10000);
+    });
+
+    socket.on('emergency:triggered', (data: any) => {
+      console.log('🚨 SOS Alert received in Doctor Dashboard:', data);
+      playCuteNotificationSound();
+      setRequests((prev) => {
+        const id = data.id;
+        if (prev.some((r) => r.id === id)) return prev;
+        return [
+          {
+            id: id || `sos-${Date.now()}`,
+            ticketNumber: `EM-SOS-${Date.now().toString().slice(-4)}`,
+            studentName: data.residentName || 'Student Patient',
+            studentId: data.residentId || 'CS2023042',
+            studentRoll: 'REC-CS-042',
+            studentPhone: data.residentPhone || '+91 98765 43210',
+            parentPhone: '+91 94370 88990',
+            hostel: data.blockName || 'Nilgiri Block A',
+            room: data.roomNumber || 'Room',
+            requestType: 'Emergency' as MedicalRequestType,
+            description: `🚨 CRITICAL SOS: ${data.notes || 'Emergency dispatched'} at ${data.locationDetails || 'Hostel'}`,
+            urgency: 'EMERGENCY',
+            dateTime: 'Just now',
+            status: 'New',
+            attendingStaff: 'Dr. Pratima Mishra, MD',
+          },
+          ...prev,
+        ];
+      });
+      setToastMsg(`🚨 CRITICAL EMERGENCY SOS: ${data.residentName || 'Student'} (${data.roomNumber || 'Hostel'}) triggered SOS!`);
+      setTimeout(() => setToastMsg(''), 12000);
+    });
+
+    const interval = setInterval(syncMedicalEmergency, 12000);
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, []);
 
   // Save Consultation Action
@@ -428,7 +526,7 @@ function MedicalPortalContent({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search medical features..."
+                placeholder="Search requests, medicines..."
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
                 className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#141e33] border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-rose-500 transition"
@@ -440,16 +538,28 @@ function MedicalPortalContent({
           {/* Navigation Links (10 items matching prompt) */}
           <nav className="p-3 space-y-1 max-h-[calc(100vh-290px)] overflow-y-auto custom-scrollbar">
             {[
-              { id: 'DASHBOARD', label: 'Home Dashboard', icon: Heart, badge: null },
-              { id: 'MEDICAL_REQUESTS', label: 'Medical Requests', icon: Stethoscope, badge: `${newRequestsCount}`, badgeColor: 'bg-blue-500/20 text-blue-300' },
-              { id: 'EMERGENCY', label: 'Emergency / SOS', icon: ShieldAlert, badge: emergencyAlertsCount > 0 ? 'ALERT' : null, badgeColor: 'bg-red-500 text-white animate-pulse' },
-              { id: 'APPOINTMENTS', label: 'Appointments', icon: Calendar, badge: `${todayAppointmentsCount}`, badgeColor: 'bg-emerald-500/20 text-emerald-300' },
-              { id: 'MEDICAL_VISITS', label: 'Medical Visits & OPD', icon: FileText, badge: null },
-              { id: 'MEDICAL_LEAVE', label: 'Medical Leave', icon: Bed, badge: `${medicalLeavesCount}`, badgeColor: 'bg-purple-500/20 text-purple-300' },
-              { id: 'INVENTORY', label: 'Medicine & Pharmacy', icon: Pill, badge: medicineAlertsCount > 0 ? `${medicineAlertsCount} low` : null, badgeColor: 'bg-amber-500/20 text-amber-300' },
-              { id: 'AMBULANCE', label: 'Ambulance & Referrals', icon: Ambulance, badge: '24x7', badgeColor: 'bg-rose-500/20 text-rose-300' },
-              { id: 'REPORTS', label: 'Clinical Reports', icon: FileText, badge: '6 Reg', badgeColor: 'bg-slate-700 text-slate-300' },
-              { id: 'SETTINGS', label: 'Profile & Settings', icon: Sliders, badge: null },
+              { id: 'DASHBOARD', label: 'Overview', icon: Heart, badge: null },
+              {
+                id: 'MEDICAL_REQUESTS',
+                label: 'Student Requests',
+                icon: Stethoscope,
+                badge: emergencyAlertsCount > 0 ? `${emergencyAlertsCount} SOS` : `${newRequestsCount} New`,
+                badgeColor: emergencyAlertsCount > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-500/20 text-blue-300'
+              },
+              {
+                id: 'INVENTORY',
+                label: 'Campus Pharmacy',
+                icon: Pill,
+                badge: '10 Items',
+                badgeColor: 'bg-emerald-500/20 text-emerald-300'
+              },
+              {
+                id: 'AMBULANCE',
+                label: '24×7 Ambulance',
+                icon: Ambulance,
+                badge: 'Gate 1',
+                badgeColor: 'bg-rose-500/20 text-rose-300'
+              },
             ]
               .filter((tab) => !sidebarSearch || tab.label.toLowerCase().includes(sidebarSearch.toLowerCase()))
               .map((tab) => {
@@ -491,14 +601,14 @@ function MedicalPortalContent({
             className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/70 transition cursor-pointer"
           >
             <HelpCircle className="w-4 h-4 text-rose-400" />
-            <span>Help & Clinic Protocols</span>
+            <span>Emergency Numbers & Help</span>
           </button>
           <button
             onClick={logout}
             className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-[#141e33] hover:bg-rose-600/90 transition cursor-pointer border border-slate-800"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign Out Medical Desk</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -513,19 +623,14 @@ function MedicalPortalContent({
             <span className="text-xl">🩺</span>
             <div>
               <h2 className="text-sm md:text-base font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
-                <span>Campus Health & Wellness Center</span>
+                <span>Campus Medical & Health Center</span>
                 <span className="text-slate-400 font-normal">/</span>
                 <span className="text-rose-600 text-xs font-bold font-mono">
-                  {activeTab === 'DASHBOARD' && 'Clinical Overview'}
-                  {activeTab === 'MEDICAL_REQUESTS' && 'Student Medical Intake'}
-                  {activeTab === 'EMERGENCY' && 'Emergency Distress & SOS'}
-                  {activeTab === 'APPOINTMENTS' && 'Doctor Consultation Slots'}
-                  {activeTab === 'MEDICAL_VISITS' && 'Outpatient Clinical Register'}
-                  {activeTab === 'MEDICAL_LEAVE' && 'Medical Leave & Recuperation'}
-                  {activeTab === 'INVENTORY' && 'Pharmacy Medicine Inventory'}
-                  {activeTab === 'AMBULANCE' && '24x7 Ambulance & Hospital Referrals'}
-                  {activeTab === 'REPORTS' && 'Epidemiology & Clinical Reports'}
-                  {activeTab === 'SETTINGS' && 'Doctor Profile & Clinical Protocols'}
+                  {activeTab === 'DASHBOARD' && 'Overview'}
+                  {activeTab === 'MEDICAL_REQUESTS' && 'Student Requests'}
+                  {activeTab === 'EMERGENCY' && 'Emergency Alerts'}
+                  {activeTab === 'INVENTORY' && 'Campus Pharmacy'}
+                  {activeTab === 'AMBULANCE' && '24×7 Ambulance'}
                 </span>
               </h2>
             </div>
@@ -564,7 +669,7 @@ function MedicalPortalContent({
               className="hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-black transition cursor-pointer"
             >
               <Ambulance className="w-3.5 h-3.5" />
-              <span>Ambulance 108</span>
+              <span>Call Ambulance</span>
             </button>
 
             {/* Primary Action Button (+ Register Case) */}
@@ -573,7 +678,7 @@ function MedicalPortalContent({
               className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-600/20 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Intake Case</span>
+              <span>+ New Medical Request</span>
             </button>
 
             {/* Doctor Avatar */}
@@ -627,7 +732,7 @@ function MedicalPortalContent({
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider">
-                        CHIEF MEDICAL OFFICER
+                        CAMPUS DOCTOR ON DUTY
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-mono font-bold">
                         ID: {officer.badgeId}
@@ -648,7 +753,7 @@ function MedicalPortalContent({
                     className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-white text-blue-900 hover:bg-slate-100 font-extrabold text-xs shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 text-blue-600" />
-                    <span>Intake Patient</span>
+                    <span>+ New Request</span>
                   </button>
                   <button
                     onClick={() => setShowAppointmentModal(true)}
@@ -662,7 +767,7 @@ function MedicalPortalContent({
                     className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     <Ambulance className="w-4 h-4" />
-                    <span>Dispatch 108</span>
+                    <span>Call Ambulance</span>
                   </button>
                 </div>
               </div>
@@ -673,13 +778,13 @@ function MedicalPortalContent({
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      NEW MEDICAL REQUESTS
+                      STUDENT REQUESTS
                     </span>
                     <p className="text-2xl font-black text-slate-900 tracking-tight mt-1">
                       {newRequestsCount}
                     </p>
                     <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-600 mt-1">
-                      <span>{activeCasesCount} In Consultation</span>
+                      <span>{activeCasesCount} Being Treated</span>
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
@@ -691,13 +796,13 @@ function MedicalPortalContent({
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      TODAY'S APPOINTMENTS
+                      FREE MEDICINES
                     </span>
                     <p className="text-2xl font-black text-slate-900 tracking-tight mt-1">
                       {todayAppointmentsCount}
                     </p>
                     <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-purple-600 mt-1">
-                      <span>General & Ortho Review</span>
+                      <span>10 Essential Items In Stock</span>
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
@@ -709,14 +814,14 @@ function MedicalPortalContent({
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      MEDICAL LEAVE CASES
+                      24×7 AMBULANCE
                     </span>
                     <p className="text-2xl font-black text-blue-600 tracking-tight mt-1 flex items-center space-x-1.5">
                       <span>{medicalLeavesCount}</span>
                       <Bed className="w-5 h-5 text-blue-600" />
                     </p>
                     <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-blue-600 mt-1">
-                      <span>Hostel Bed Rest Advised</span>
+                      <span>Ready at Main Gate 1</span>
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -728,7 +833,7 @@ function MedicalPortalContent({
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      EMERGENCY SOS RELAY
+                      EMERGENCY ALERTS
                     </span>
                     <p className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center space-x-1">
                       <span className={emergencyAlertsCount > 0 ? 'text-red-600 animate-pulse' : 'text-slate-900'}>
@@ -736,11 +841,200 @@ function MedicalPortalContent({
                       </span>
                     </p>
                     <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-emerald-600 mt-1">
-                      <span>24x7 Ambulance Ready</span>
+                      <span>Needs Immediate Help</span>
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
                     <Flame className="w-6 h-6" />
+                  </div>
+                </div>
+              </div>
+
+              {/* LIVE CAMPUS HEALTHCARE OPERATIONAL READINESS & STUDENT LIFELINE STRIP */}
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 rounded-3xl p-5 text-white shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-800/40 pb-3">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-bold">
+                      <Activity className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black tracking-tight text-white flex items-center space-x-2">
+                        <span>Campus Health Services Status</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
+                          CONNECTED TO STUDENT APP
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        Current status for Campus Pharmacy, 24×7 Ambulance, and Emergency Help Desk
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] text-slate-400">Help Line:</span>
+                    <a
+                      href="tel:+919861000112"
+                      className="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold text-xs hover:bg-rose-500/30 flex items-center space-x-1"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>+91 98610 00112</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Lifeline 1: Campus Pharmacy */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/40 transition space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                          <Pill className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h5 className="font-extrabold text-xs text-white">Campus Pharmacy</h5>
+                          <p className="text-[10px] text-slate-400">{pharmacist.location}</p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        pharmacist.dutyStatus === 'ON_DUTY'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      }`}>
+                        {pharmacist.dutyStatus === 'ON_DUTY' ? '● OPEN NOW' : 'ON BREAK'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] space-y-1 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Pharmacist:</span>
+                        <strong className="text-white">{pharmacist.name}</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Direct Call:</span>
+                        <a href={`tel:${pharmacist.phone}`} className="text-emerald-400 font-mono font-bold hover:underline">
+                          {pharmacist.phone}
+                        </a>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Free Medicines:</span>
+                        <span className="text-emerald-300 font-bold">10 Free Medicines Ready</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => setShowDispenseModal(true)}
+                        className="flex-1 py-1.5 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center space-x-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Give Medicine</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('INVENTORY')}
+                        className="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs transition cursor-pointer"
+                      >
+                        View Stock
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lifeline 2: 24x7 Ambulance & Hospital Transit */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-rose-500/40 transition space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
+                          <Ambulance className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h5 className="font-extrabold text-xs text-white">24×7 Campus Ambulance</h5>
+                          <p className="text-[10px] text-slate-400">Post: {fleet.standbyPost}</p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-black uppercase tracking-wider">
+                        ● 24×7 STANDBY
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] space-y-1 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Vehicle:</span>
+                        <strong className="text-white font-mono text-[10px]">{fleet.vehicleNumber}</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Driver:</span>
+                        <span className="text-white font-bold">{fleet.driverName} ({fleet.driverPhone})</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Nearest Hospital:</span>
+                        <span className="text-rose-300 font-bold">KIMS Hospital (12 mins away)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => setShowAmbulanceModal(true)}
+                        className="flex-1 py-1.5 px-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center space-x-1"
+                      >
+                        <Ambulance className="w-3.5 h-3.5" />
+                        <span>Send Ambulance</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('AMBULANCE')}
+                        className="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs transition cursor-pointer"
+                      >
+                        Ambulance Info
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lifeline 3: Emergency Desk & Gate Clearance */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/40 transition space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h5 className="font-extrabold text-xs text-white">Emergency Help Desk</h5>
+                          <p className="text-[10px] text-slate-400">Main Gate & Warden Connected</p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-black uppercase tracking-wider">
+                        SYNC ACTIVE
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] space-y-1 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Gate Turnstile:</span>
+                        <span className="text-emerald-300 font-bold">Main Gate Opens Instantly</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Hostel Wardens:</span>
+                        <span className="text-white">Wardens Alerted Automatically</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Active Alerts:</span>
+                        <span className={emergencyAlertsCount > 0 ? 'text-red-400 font-bold' : 'text-slate-300'}>
+                          {emergencyAlertsCount} Emergency Alerts
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => setActiveTab('EMERGENCY')}
+                        className="flex-1 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center space-x-1"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>View Emergencies</span>
+                      </button>
+                      <button
+                        onClick={() => setShowHelpModal(true)}
+                        className="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs transition cursor-pointer"
+                      >
+                        Emergency Help
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -755,7 +1049,7 @@ function MedicalPortalContent({
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black uppercase tracking-wider">
-                          HIGH PRIORITY SOS BEACON
+                          🚨 EMERGENCY ALERT — STUDENT NEEDS IMMEDIATE HELP
                         </span>
                         <span className="text-xs font-mono text-red-800 font-bold">{activeEmergency.ticketNumber}</span>
                       </div>
@@ -781,164 +1075,19 @@ function MedicalPortalContent({
                       className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-xs flex items-center space-x-1.5"
                     >
                       <Ambulance className="w-3.5 h-3.5" />
-                      <span>Dispatch Ambulance</span>
+                      <span>Send Ambulance</span>
                     </button>
                     <button
                       onClick={() => handleResolveEmergency(activeEmergency.id)}
                       className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
                     >
-                      Acknowledge & Resolve
+                      Mark Done / Solved
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 3. TWO COLUMNS LAYOUT: LEFT IS PATIENT CONSULTATION CARD & RIGHT IS CLINIC SCHEDULE */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Card: Featured Patient Intake Consultation Card (Matching photo style) */}
-                <div className="bg-white rounded-3xl p-6 border-2 border-rose-400/80 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900">Patient Consultation</h4>
-                      <div className="w-16 h-1 bg-rose-600 rounded-full mt-1"></div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black uppercase tracking-wider">
-                      {primaryPatient.requestType}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
-                    <span>Status:</span>
-                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-extrabold flex items-center space-x-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>{primaryPatient.status}</span>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-extrabold">
-                      {primaryPatient.urgency} Urgency
-                    </span>
-                  </div>
-
-                  {/* Form Table Layout (Matching photo style) */}
-                  <div className="grid grid-cols-2 gap-y-2.5 text-xs pt-1 border-t border-slate-100">
-                    <div className="text-slate-500 font-semibold">Student Patient:</div>
-                    <div className="text-slate-900 font-extrabold text-right">
-                      {primaryPatient.studentName}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Roll Number:</div>
-                    <div className="font-mono text-blue-600 font-bold text-right">
-                      {primaryPatient.studentRoll}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Student Contact:</div>
-                    <div className="font-mono text-emerald-600 font-bold text-right">
-                      {primaryPatient.studentPhone}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Guardian Phone:</div>
-                    <div className="font-mono text-slate-700 text-right">
-                      {primaryPatient.parentPhone}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Hostel & Room:</div>
-                    <div className="text-slate-900 font-bold text-right">
-                      {primaryPatient.hostel} • Room {primaryPatient.room}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Chief Complaint:</div>
-                    <div className="text-slate-800 font-medium text-right truncate">
-                      {primaryPatient.description}
-                    </div>
-
-                    {primaryPatient.vitals && (
-                      <>
-                        <div className="text-slate-500 font-semibold">Clinical Vitals:</div>
-                        <div className="font-mono text-rose-700 font-bold text-right">
-                          BP: {primaryPatient.vitals.bp} • Temp: {primaryPatient.vitals.temp}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="text-slate-500 font-semibold">Attending Doctor:</div>
-                    <div className="text-blue-600 font-extrabold text-right">
-                      {primaryPatient.attendingStaff || officer.name}
-                    </div>
-
-                    <div className="text-slate-500 font-semibold">Medical Leave:</div>
-                    <div className="text-purple-700 font-bold text-right">
-                      {primaryPatient.medicalLeaveRecommended
-                        ? `Recommended (${primaryPatient.medicalLeaveDays} Days Bed Rest)`
-                        : 'Not Required'}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="pt-2">
-                    <button
-                      onClick={() => {
-                        setSelectedRequestForConsult(primaryPatient);
-                        setShowConsultModal(true);
-                      }}
-                      className="w-full py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
-                    >
-                      <Stethoscope className="w-4 h-4" />
-                      <span>[ Record Consultation & Prescribe ]</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Right Card: Today's Clinic Schedule (Matching photo style) */}
-                <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-extrabold text-slate-900">Today's Clinic Doctor Schedule</h4>
-                        <p className="text-[11px] text-slate-400">Consultation roster at Health Center Bay 1</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setActiveTab('APPOINTMENTS')}
-                      className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center space-x-1 cursor-pointer"
-                    >
-                      <span>Full Schedule</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 pt-1">
-                    {appointments.map((apt) => (
-                      <div
-                        key={apt.id}
-                        className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 hover:border-slate-200 transition"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-extrabold text-xs text-slate-900">
-                            {apt.studentName} ({apt.studentRoll})
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              apt.status === 'COMPLETED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : apt.status === 'IN_CONSULTATION'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
-                          >
-                            {apt.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          {apt.slotTime} • Doctor: <strong className="text-slate-800">{apt.doctorName}</strong>
-                        </p>
-                        <p className="text-[11px] text-slate-600 italic">{apt.symptoms}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
               {/* 4. RECENT MEDICAL CASES TABLE */}
               <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
@@ -946,15 +1095,15 @@ function MedicalPortalContent({
                   <div className="flex items-center space-x-2.5">
                     <Clock className="w-5 h-5 text-rose-600" />
                     <div>
-                      <h4 className="font-extrabold text-sm text-slate-900">Live Patient Clinical Intake Feed</h4>
-                      <p className="text-xs text-slate-400">Incoming consultations from Student Platform & Hostel clinics</p>
+                      <h4 className="font-extrabold text-sm text-slate-900">Recent Student Health Requests</h4>
+                      <p className="text-xs text-slate-400">Latest requests sent by students from the student app</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveTab('MEDICAL_REQUESTS')}
                     className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center space-x-1 cursor-pointer"
                   >
-                    <span>View All Cases</span>
+                    <span>View All Requests</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -963,12 +1112,12 @@ function MedicalPortalContent({
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider text-[10px] border-b border-slate-100">
                       <tr>
-                        <th className="py-3 px-4">Case #</th>
+                        <th className="py-3 px-4">Ticket #</th>
                         <th className="py-3 px-4">Student</th>
                         <th className="py-3 px-4">Hostel / Room</th>
                         <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Urgency</th>
-                        <th className="py-3 px-4">Doctor Notes / Symptoms</th>
+                        <th className="py-3 px-4">Problem / Sickness</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Action</th>
                       </tr>
@@ -1150,7 +1299,7 @@ function MedicalPortalContent({
                           className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center space-x-1"
                         >
                           <Stethoscope className="w-3.5 h-3.5" />
-                          <span>Record Treatment</span>
+                          <span>Give Medicine / Update</span>
                         </button>
                       </div>
                     </div>
@@ -1259,287 +1408,198 @@ function MedicalPortalContent({
           )}
 
           {/* ================================================================= */}
-          {/* TAB 4: APPOINTMENTS                                               */}
-          {/* ================================================================= */}
-          {activeTab === 'APPOINTMENTS' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Clinical Appointment Schedule</h3>
-                  <p className="text-xs text-slate-500">
-                    Booked OPD consultations with Chief Medical Officer and visiting specialists.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowAppointmentModal(true)}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center space-x-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Schedule Appointment</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {appointments.map((apt) => (
-                  <div
-                    key={apt.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3 hover:border-rose-300 shadow-sm transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-mono font-bold text-[10px] text-rose-600">{apt.appointmentNumber}</span>
-                        <h4 className="font-extrabold text-sm text-slate-900 mt-0.5">{apt.studentName}</h4>
-                        <p className="text-xs text-slate-500">{apt.hostel} • Room {apt.room} • {apt.phone}</p>
-                      </div>
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          apt.status === 'COMPLETED'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : apt.status === 'IN_CONSULTATION'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-blue-50 text-blue-700 border border-blue-200'
-                        }`}
-                      >
-                        {apt.status}
-                      </span>
-                    </div>
-
-                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs space-y-1">
-                      <p className="text-slate-700">Slot: <strong className="text-slate-900">{apt.slotDate}, {apt.slotTime}</strong></p>
-                      <p className="text-slate-500">Doctor: <strong className="text-slate-800">{apt.doctorName}</strong> ({apt.specialty})</p>
-                      <p className="text-slate-600 italic pt-1">{apt.symptoms}</p>
-                    </div>
-
-                    <div className="flex justify-end pt-1">
-                      {apt.status !== 'COMPLETED' ? (
-                        <button
-                          onClick={() => {
-                            setAppointments((prev) =>
-                              prev.map((a) => (a.id === apt.id ? { ...a, status: 'COMPLETED' } : a))
-                            );
-                            triggerToast('Appointment marked completed.');
-                          }}
-                          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-                        >
-                          Mark Completed
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Consultation Done</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 5: MEDICAL VISITS & OPD REGISTER                              */}
-          {/* ================================================================= */}
-          {activeTab === 'MEDICAL_VISITS' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Outpatient Consultation & Visits Ledger</h3>
-                  <p className="text-xs text-slate-500">
-                    Clinical record of patient treatments, diagnoses, and pharmacy dispensations.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {visits.map((vis) => (
-                  <div
-                    key={vis.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3 hover:border-slate-300 shadow-sm transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-xs text-rose-600">{vis.visitNumber}</span>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">{vis.visitDate} at {vis.visitTime}</span>
-                        </div>
-                        <h4 className="font-extrabold text-sm text-slate-900 mt-1">
-                          {vis.studentName} ({vis.studentRoll})
-                        </h4>
-                        <p className="text-xs text-slate-500">{vis.hostel} • Room {vis.room}</p>
-                      </div>
-
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase">
-                        Verified OPD
-                      </span>
-                    </div>
-
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs space-y-2">
-                      <p className="text-slate-900 font-bold">Diagnosis: <span className="font-normal text-slate-700">{vis.diagnosis}</span></p>
-                      <p className="text-slate-900 font-bold">Treatment: <span className="font-normal text-slate-700">{vis.treatment}</span></p>
-                      <div className="pt-1 flex flex-wrap gap-1.5">
-                        {vis.prescribedMedicines.map((m, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[11px] font-mono">
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                      <span>Attending: <strong>{vis.attendingDoctor}</strong></span>
-                      {vis.followUpDate && <span>Follow-up: <strong>{vis.followUpDate}</strong></span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 6: MEDICAL LEAVE (PRIVACY PRESERVED SYNC WITH WARDEN)          */}
-          {/* ================================================================= */}
-          {activeTab === 'MEDICAL_LEAVE' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Medical Leave & Hostel Bed Rest Workflow</h3>
-                  <p className="text-xs text-slate-500">
-                    Confidential clinical recommendations: Wardens receive only needed operational dates for attendance.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {medicalLeaves.map((lv) => (
-                  <div
-                    key={lv.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3.5 hover:border-purple-300 shadow-sm transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-mono font-bold text-xs text-purple-600">{lv.leaveNumber}</span>
-                        <h4 className="font-extrabold text-sm text-slate-900 mt-1">{lv.studentName} ({lv.studentRoll})</h4>
-                        <p className="text-xs text-slate-500">{lv.hostel} • Room {lv.room}</p>
-                      </div>
-
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          lv.medicalStatus === 'APPROVED_BY_WARDEN'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : lv.medicalStatus === 'RECOMMENDED'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {lv.medicalStatus}
-                      </span>
-                    </div>
-
-                    <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 text-xs space-y-1 text-purple-900">
-                      <p className="font-bold">Operational Leave Scope:</p>
-                      <p>{lv.operationalReason}</p>
-                      <p className="font-mono text-[11px] pt-1">
-                        Period: {lv.startDate} to {lv.endDate} ({lv.days} Days)
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-[11px] text-slate-500">
-                        Recommended By: <strong className="text-slate-800">{lv.recommendedBy}</strong>
-                      </span>
-
-                      {!lv.isFitToResume ? (
-                        <button
-                          onClick={() => {
-                            setMedicalLeaves((prev) =>
-                              prev.map((l) => (l.id === lv.id ? { ...l, isFitToResume: true } : l))
-                            );
-                            triggerToast(`Fitness to resume studies issued for ${lv.studentName}.`);
-                          }}
-                          className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-                        >
-                          Issue Fitness Certificate
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Fit to Resume</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 7: PHARMACY INVENTORY                                         */}
+          {/* TAB 7: CAMPUS PHARMACY & ESSENTIAL OTC DISPENSARY                 */}
           {/* ================================================================= */}
           {activeTab === 'INVENTORY' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Campus Pharmacy Medicine Stock</h3>
-                  <p className="text-xs text-slate-500">
-                    Essential antipyretics, analgesics, antibiotics, ORS electrolytes, and antiseptic dressings.
-                  </p>
+            <div className="space-y-6">
+              {/* 1. CAMPUS PHARMACY DUTY DESK BANNER */}
+              <div className="bg-gradient-to-r from-teal-800 via-emerald-800 to-slate-900 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-emerald-700/40">
+                <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 border-2 border-emerald-400/40 flex items-center justify-center text-emerald-300 shadow-md shrink-0">
+                    <Pill className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                        CAMPUS PHARMACY
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 text-[10px] font-mono">
+                        {pharmacist.registrationNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-[10px] font-bold">
+                        {pharmacist.timings}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-black text-white tracking-tight flex items-center space-x-2">
+                      <span>{pharmacist.name}</span>
+                      <span className="text-xs font-medium text-emerald-200">({pharmacist.qualifications})</span>
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5 flex items-center space-x-2">
+                      <span>📍 {pharmacist.location}</span>
+                      <span>•</span>
+                      <span>Pharmacist Phone: <strong className="text-emerald-300 font-mono">{pharmacist.phone}</strong></span>
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-3 w-full md:w-auto">
-                  <div className="relative flex-1 md:w-64">
-                    <input
-                      type="text"
-                      placeholder="Search medicine or category..."
-                      value={inventorySearch}
-                      onChange={(e) => setInventorySearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs focus:bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  </div>
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
                   <button
-                    onClick={() => setShowAddMedicineModal(true)}
-                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center space-x-1.5 shrink-0"
+                    onClick={() => {
+                      const newStatus = pharmacist.dutyStatus === 'ON_DUTY' ? 'ON_BREAK' : 'ON_DUTY';
+                      setPharmacist((prev) => ({ ...prev, dutyStatus: newStatus }));
+                      triggerToast(`Pharmacist duty status updated to: ${newStatus === 'ON_DUTY' ? 'ON DUTY' : 'ON BREAK'}`);
+                    }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center space-x-1.5 ${
+                      pharmacist.dutyStatus === 'ON_DUTY'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-400/50 hover:bg-amber-500/30'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-current animate-ping" />
+                    <span>{pharmacist.dutyStatus === 'ON_DUTY' ? 'Status: ON DUTY' : 'Status: ON BREAK'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowDispenseModal(true)}
+                    className="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs shadow-md transition cursor-pointer flex items-center space-x-1.5"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add Medicine</span>
+                    <span>Give Free Medicine to Student</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowAddMedicineModal(true)}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-xs border border-white/20 transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add New Medicine</span>
                   </button>
                 </div>
               </div>
 
+              {/* 2. INVENTORY FILTER PILLS & SEARCH */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  <button
+                    onClick={() => setInventoryFilter('ALL')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      inventoryFilter === 'ALL'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    All Items ({inventory.length})
+                  </button>
+                  <button
+                    onClick={() => setInventoryFilter('STUDENT_OTC')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 ${
+                      inventoryFilter === 'STUDENT_OTC'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Free Student Medicines (10)</span>
+                  </button>
+                  <button
+                    onClick={() => setInventoryFilter('PRESCRIPTION')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      inventoryFilter === 'PRESCRIPTION'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    Other Medicines
+                  </button>
+                  <button
+                    onClick={() => setInventoryFilter('EQUIPMENT')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      inventoryFilter === 'EQUIPMENT'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    First Aid & Kits
+                  </button>
+                </div>
+
+                <div className="relative w-full md:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search medicine or indication..."
+                    value={inventorySearch}
+                    onChange={(e) => setInventorySearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* 3. MEDICINE INVENTORY GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {inventory
-                  .filter((item) =>
-                    !inventorySearch ||
-                    item.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
-                    item.category.toLowerCase().includes(inventorySearch.toLowerCase())
-                  )
+                  .filter((item) => {
+                    const matchesSearch =
+                      !inventorySearch ||
+                      item.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+                      item.category.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+                      (item.indication && item.indication.toLowerCase().includes(inventorySearch.toLowerCase()));
+
+                    if (!matchesSearch) return false;
+
+                    if (inventoryFilter === 'STUDENT_OTC') {
+                      return item.isOtcStudentEssential;
+                    }
+                    if (inventoryFilter === 'PRESCRIPTION') {
+                      return !item.isOtcStudentEssential && item.category !== 'Clinic Equipment';
+                    }
+                    if (inventoryFilter === 'EQUIPMENT') {
+                      return item.category.includes('Equipment') || item.category.includes('First Aid');
+                    }
+                    return true;
+                  })
                   .map((item) => (
                     <div
                       key={item.id}
-                      className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3 hover:border-rose-300 shadow-sm transition"
+                      className={`bg-white border rounded-3xl p-5 space-y-3 shadow-sm hover:shadow-md transition ${
+                        item.isOtcStudentEssential
+                          ? 'border-emerald-200 hover:border-emerald-400 bg-emerald-50/10'
+                          : 'border-slate-200 hover:border-blue-300'
+                      }`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <span className="font-mono font-bold text-[10px] text-blue-600">{item.code}</span>
-                          <h4 className="font-extrabold text-sm text-slate-900 mt-0.5">{item.name}</h4>
-                          <span className="text-xs text-slate-400">{item.category} • {item.dosage}</span>
+                          <div className="flex items-center space-x-1.5">
+                            <span className="font-mono font-bold text-[10px] text-blue-600">{item.code}</span>
+                            {item.isOtcStudentEssential && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wide">
+                                Free for Students
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-extrabold text-sm text-slate-900 mt-1">{item.name}</h4>
+                          <span className="text-xs text-slate-500">{item.category} • {item.dosage}</span>
                         </div>
                         {item.isLowStock && (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black uppercase">
+                          <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black uppercase shrink-0">
                             Low Stock
                           </span>
                         )}
                       </div>
 
+                      {item.indication && (
+                        <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
+                          <strong className="text-slate-800">Indication:</strong> {item.indication}
+                        </div>
+                      )}
+
                       <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs space-y-1">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Available:</span>
+                          <span className="text-slate-500">In Stock:</span>
                           <span className="font-extrabold text-slate-900">{item.quantity} {item.unit}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Min Threshold:</span>
+                          <span className="text-slate-500">Low Stock Warning at:</span>
                           <span className="font-bold text-slate-700">{item.minStock} {item.unit}</span>
                         </div>
                         <div className="flex justify-between text-[11px] text-slate-500 pt-1">
@@ -1549,6 +1609,15 @@ function MedicalPortalContent({
                       </div>
 
                       <div className="pt-1 flex gap-2">
+                        {item.isOtcStudentEssential && (
+                          <button
+                            onClick={() => setShowDispenseModal(true)}
+                            className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center space-x-1"
+                          >
+                            <Pill className="w-3.5 h-3.5" />
+                            <span>Give to Student</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setInventory((prev) =>
@@ -1558,254 +1627,258 @@ function MedicalPortalContent({
                             );
                             triggerToast(`Restocked +20 ${item.unit} of ${item.name}.`);
                           }}
-                          className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                          className={`${item.isOtcStudentEssential ? 'w-auto px-3' : 'w-full'} py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer`}
                         >
-                          + Restock (+20)
+                          + Add 20
                         </button>
                       </div>
                     </div>
                   ))}
               </div>
+
+              {/* 4. STUDENT FREE OTC MEDICINE DISPENSATION LOG REGISTER */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                      <CheckCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-slate-900">Medicines Given to Students Log</h4>
+                      <p className="text-xs text-slate-500">Simple log of all free medicines given out to hostel students</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowDispenseModal(true)}
+                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center space-x-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Give Medicine to Student</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider text-[10px] border-b border-slate-100">
+                      <tr>
+                        <th className="py-3 px-4">Slip #</th>
+                        <th className="py-3 px-4">Student Name & Roll</th>
+                        <th className="py-3 px-4">Hostel / Room</th>
+                        <th className="py-3 px-4">Medicine & Qty</th>
+                        <th className="py-3 px-4">How to Take</th>
+                        <th className="py-3 px-4">Pharmacist</th>
+                        <th className="py-3 px-4">Time</th>
+                        <th className="py-3 px-4">Free / Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {dispensations.map((disp) => (
+                        <tr key={disp.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-emerald-700">{disp.dispenseNumber}</td>
+                          <td className="py-3 px-4">
+                            <span className="font-extrabold text-slate-900 block">{disp.studentName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{disp.studentRoll}</span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 font-medium">{disp.hostelRoom}</td>
+                          <td className="py-3 px-4 font-bold text-slate-800">
+                            {disp.quantity} {disp.unit} × {disp.medicineName}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 max-w-xs">{disp.directions}</td>
+                          <td className="py-3 px-4 text-slate-700 font-semibold">{disp.pharmacistName}</td>
+                          <td className="py-3 px-4 text-slate-500 text-[11px] font-mono">{disp.dispensedTime}</td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase">
+                              Free
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
           {/* ================================================================= */}
-          {/* TAB 8: AMBULANCE & HOSPITAL REFERRALS                              */}
+          {/* TAB 8: 24X7 CAMPUS AMBULANCE FLEET & HOSPITAL TRANSIT              */}
           {/* ================================================================= */}
           {activeTab === 'AMBULANCE' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">24x7 Campus Ambulance & Hospital Referrals</h3>
-                  <p className="text-xs text-slate-500">
-                    Emergency vehicle logs: AIIMS Bhubaneswar, Capital Hospital, and KIMS referrals.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowAmbulanceModal(true)}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center space-x-1.5"
-                >
-                  <Ambulance className="w-4 h-4" />
-                  <span>Dispatch Ambulance</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {referrals.map((ref) => (
-                  <div
-                    key={ref.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3 hover:border-red-300 shadow-sm transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-mono font-bold text-xs text-red-600">{ref.referralNumber}</span>
-                        <h4 className="font-extrabold text-sm text-slate-900 mt-0.5">{ref.studentName} ({ref.studentRoll})</h4>
-                        <p className="text-xs text-slate-500">{ref.hostel} • Room {ref.room}</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase">
-                        {ref.status}
+            <div className="space-y-6">
+              {/* 1. 24x7 CAMPUS EMERGENCY VEHICLE FLEET COMMAND BANNER */}
+              <div className="bg-gradient-to-r from-red-700 via-rose-800 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-red-500/30">
+                <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 border-2 border-red-400/40 flex items-center justify-center text-red-300 shadow-md shrink-0">
+                    <Ambulance className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                        24×7 CAMPUS AMBULANCE
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-white/10 text-red-100 text-[10px] font-mono">
+                        {fleet.vehicleNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-[10px] font-bold">
+                        READY AT MAIN GATE 1
                       </span>
                     </div>
-
-                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs space-y-1">
-                      <p className="text-slate-800 font-bold">Destination: {ref.destinationHospital}</p>
-                      <p className="text-slate-600">Cause: {ref.referralReason}</p>
-                      <p className="text-slate-500 font-mono text-[11px] pt-1">
-                        Vehicle: {ref.vehicleNumber} • Driver: {ref.driverName} ({ref.driverPhone})
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-[11px] text-slate-400">Dispatch Time: {ref.dispatchTime}</span>
-                      {ref.status !== 'COMPLETED' ? (
-                        <button
-                          onClick={() => {
-                            setReferrals((prev) =>
-                              prev.map((rf) => (rf.id === ref.id ? { ...rf, status: 'COMPLETED' } : rf))
-                            );
-                            triggerToast('Patient referral trip marked completed.');
-                          }}
-                          className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer"
-                        >
-                          Mark Completed
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Trip Completed</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 9: REPORTS                                                    */}
-          {/* ================================================================= */}
-          {activeTab === 'REPORTS' && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Clinical & Health Center Registers</h3>
-                  <p className="text-xs text-slate-500">
-                    Official CSV downloads and printable registers for campus health center audits.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {reports.map((rep) => (
-                  <div
-                    key={rep.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 hover:border-rose-300 shadow-sm transition flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h4 className="font-extrabold text-sm text-slate-900">{rep.name}</h4>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              Records: {rep.recordCount} entries
-                            </span>
-                          </div>
-                        </div>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-rose-700 font-mono text-[10px] font-bold">
-                          {rep.format}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        {rep.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center space-x-2 pt-2 border-t border-slate-100">
-                      <button
-                        onClick={() => handleDownloadCsv(rep.name)}
-                        className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-xs"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download CSV</span>
-                      </button>
-                      <button
-                        onClick={() => window.print()}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
-                        title="Print Register"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 10: PROFILE & SETTINGS                                        */}
-          {/* ================================================================= */}
-          {activeTab === 'SETTINGS' && (
-            <div className="space-y-6 max-w-4xl mx-auto">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={officer.avatarUrl}
-                      alt={officer.name}
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-rose-500 shadow-md"
-                    />
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-black text-lg text-slate-900">{officer.name}</h3>
-                        <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-mono text-xs font-bold">
-                          {officer.badgeId}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">{officer.qualifications}</p>
-                      <p className="text-xs text-slate-700 font-medium mt-0.5">{officer.department}</p>
-                    </div>
-                  </div>
-
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-black text-xs uppercase tracking-wider">
-                    On Duty Active
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] block">Doctor Direct Line</span>
-                    <span className="font-mono text-slate-900 font-bold">{officer.phone}</span>
-                  </div>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] block">Consultation Shift</span>
-                    <span className="text-slate-900 font-bold">{officer.shift}</span>
-                  </div>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] block">Clinic Bay Location</span>
-                    <span className="text-slate-900 font-bold">{officer.clinicBay}</span>
-                  </div>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] block">Ambulance Control 108</span>
-                    <span className="font-mono text-rose-600 font-bold">{officer.ambulanceHelpline}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Role Permissions Boundary */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center space-x-2.5">
-                  <KeyRound className="w-5 h-5 text-amber-600" />
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-900">Medical Staff Role Permission Boundary</h4>
-                    <p className="text-xs text-slate-500">
-                      Standard operational matrix for Healthcare Staff in CampusHelper.
+                    <h3 className="text-xl font-black text-white tracking-tight flex items-center space-x-2">
+                      <span>Driver: {fleet.driverName}</span>
+                      <span className="text-xs font-medium text-red-200">({fleet.driverPhone})</span>
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5 flex items-center space-x-2">
+                      <span>📍 {fleet.standbyPost}</span>
+                      <span>•</span>
+                      <span>Vehicle: {fleet.vehicleType}</span>
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center space-x-2.5">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Manage clinical consultations & patient triage</span>
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                  <a
+                    href={`tel:${fleet.driverPhone}`}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-xs border border-white/20 transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Phone className="w-4 h-4 text-emerald-300" />
+                    <span>Call Driver Kailash (+91 94370 00108)</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      triggerToast('Security Gate 1 turnstile clearance broadcasted. Boom barrier unlocked.');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Open Gate 1 Barrier</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowAmbulanceModal(true)}
+                    className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-black text-xs shadow-lg transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Ambulance className="w-4 h-4" />
+                    <span>Send Ambulance Now</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. NEAREST TERTIARY HOSPITALS & TRANSIT TIME TILES */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900">Nearby Hospitals for Emergency</h4>
+                    <p className="text-xs text-slate-500">Hospitals near campus with distance, travel time, and emergency phone numbers</p>
                   </div>
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center space-x-2.5">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Handle emergency SOS alarms & dispatch 24x7 ambulance</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center space-x-2.5">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Issue medical leave recommendations & fitness clearances</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center space-x-2.5">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Manage pharmacy inventory & dispense medications</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center space-x-2.5">
-                    <X className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>Cannot approve general hostel gate passes (Warden only)</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center space-x-2.5">
-                    <X className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>Cannot alter student academic grades or attendance records</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center space-x-2.5">
-                    <X className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>Cannot modify hostel room allocations or bed fees</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center space-x-2.5">
-                    <X className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>Cannot access system-wide Admin management credentials</span>
-                  </div>
+                  <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
+                    3 Network Hospitals
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {fleet.nearestHospitals.map((hosp, idx) => (
+                    <div
+                      key={idx}
+                      className={`bg-white rounded-3xl p-5 border shadow-sm hover:shadow-md transition space-y-3 ${
+                        idx === 0 ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          {idx === 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-black uppercase mb-1 inline-block">
+                              Main Hospital for Students
+                            </span>
+                          )}
+                          <h5 className="font-extrabold text-sm text-slate-900">{hosp.name}</h5>
+                          <span className="text-xs text-slate-400 font-mono">Drive time: ~{hosp.etaMinutes} mins</span>
+                        </div>
+                        <span className="text-sm font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-xl">
+                          {hosp.distance}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 text-xs flex items-center justify-between">
+                        <span className="text-slate-500">Emergency Phone:</span>
+                        <a href={`tel:${hosp.phone}`} className="font-mono font-bold text-blue-600 hover:underline">
+                          {hosp.phone}
+                        </a>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowAmbulanceModal(true);
+                        }}
+                        className="w-full py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 font-bold text-xs transition cursor-pointer"
+                      >
+                        Dispatch Patient to {hosp.name.split(' ')[0]}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. ACTIVE AMBULANCE DISPATCHES & REFERRAL HISTORY */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-slate-900">Ambulance Trips & Hospital Transfers Log</h4>
+                  <span className="text-xs text-slate-400">{referrals.length} Total Records</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {referrals.map((ref) => (
+                    <div
+                      key={ref.id}
+                      className="bg-white border border-slate-200 rounded-3xl p-5 space-y-3 hover:border-red-300 shadow-sm transition"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="font-mono font-bold text-xs text-red-600">{ref.referralNumber}</span>
+                          <h4 className="font-extrabold text-sm text-slate-900 mt-0.5">{ref.studentName} ({ref.studentRoll})</h4>
+                          <p className="text-xs text-slate-500">{ref.hostel} • Room {ref.room}</p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-black uppercase">
+                          {ref.status}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs space-y-1">
+                        <p className="text-slate-800 font-bold">Destination: {ref.destinationHospital}</p>
+                        <p className="text-slate-600">Cause: {ref.referralReason}</p>
+                        <p className="text-slate-500 font-mono text-[11px] pt-1">
+                          Vehicle: {ref.vehicleNumber} • Driver: {ref.driverName} ({ref.driverPhone})
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-[11px] text-slate-400">Dispatch Time: {ref.dispatchTime}</span>
+                        {ref.status !== 'COMPLETED' ? (
+                          <button
+                            onClick={() => {
+                              setReferrals((prev) =>
+                                prev.map((rf) => (rf.id === ref.id ? { ...rf, status: 'COMPLETED' } : rf))
+                              );
+                              triggerToast('Patient referral trip marked completed.');
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer"
+                          >
+                            Mark Trip Done
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Trip Done</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
+
         </div>
       </main>
 
@@ -1922,6 +1995,44 @@ function MedicalPortalContent({
       <MedicalHelpModal
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
+      />
+
+      <DispenseMedicineModal
+        isOpen={showDispenseModal}
+        onClose={() => setShowDispenseModal(false)}
+        inventory={inventory}
+        onDispense={(newDisp) => {
+          // Deduct from inventory
+          setInventory((prev) =>
+            prev.map((item) =>
+              item.name.toLowerCase().includes(newDisp.medicineName?.toLowerCase() || '') ||
+              (newDisp.medicineName && item.name.includes(newDisp.medicineName))
+                ? {
+                    ...item,
+                    quantity: Math.max(0, item.quantity - (newDisp.quantity || 1)),
+                    isLowStock: Math.max(0, item.quantity - (newDisp.quantity || 1)) <= item.minStock,
+                  }
+                : item
+            )
+          );
+
+          const recObj: StudentMedicineDispenseRecord = {
+            id: `disp-${Date.now()}`,
+            dispenseNumber: newDisp.dispenseNumber || `DISP-2026-${Math.floor(100 + Math.random() * 900)}`,
+            studentName: newDisp.studentName || 'Student Resident',
+            studentRoll: newDisp.studentRoll || 'REC-2023-CS042',
+            hostelRoom: newDisp.hostelRoom || 'Nilgiri A-204',
+            medicineName: newDisp.medicineName || 'Paracetamol 650mg (Dolo 650)',
+            quantity: newDisp.quantity || 1,
+            unit: newDisp.unit || 'Strips',
+            dispensedTime: 'Just now',
+            pharmacistName: pharmacist.name,
+            directions: newDisp.directions || 'As advised after meals',
+            isFreeStudentQuota: true,
+          };
+          setDispensations((prev) => [recObj, ...prev]);
+          triggerToast(`Dispensed ${recObj.quantity} ${recObj.unit} of ${recObj.medicineName} to ${recObj.studentName}. Stock updated.`);
+        }}
       />
     </div>
   );

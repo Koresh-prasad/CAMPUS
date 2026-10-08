@@ -108,7 +108,7 @@ export interface MedicineInventoryItem {
   id: string;
   code: string;
   name: string;
-  category: 'Analgesic' | 'Antibiotic' | 'Antihistamine' | 'Antipyretic' | 'Ointment' | 'First Aid' | 'Electrolyte';
+  category: string;
   dosage: string;
   quantity: number;
   unit: string;
@@ -117,6 +117,48 @@ export interface MedicineInventoryItem {
   isLowStock: boolean;
   isExpiringSoon: boolean;
   location: string;
+  isOtcStudentEssential?: boolean;
+  indication?: string;
+}
+
+export interface PharmacistProfile {
+  name: string;
+  registrationNumber: string;
+  qualifications: string;
+  phone: string;
+  timings: string;
+  location: string;
+  dutyStatus: 'ON_DUTY' | 'ON_BREAK' | 'EMERGENCY_DISPATCH';
+}
+
+export interface StudentMedicineDispenseRecord {
+  id: string;
+  dispenseNumber: string;
+  studentName: string;
+  studentRoll: string;
+  hostelRoom: string;
+  medicineName: string;
+  quantity: number;
+  unit: string;
+  dispensedTime: string;
+  pharmacistName: string;
+  directions: string;
+  isFreeStudentQuota: boolean;
+}
+
+export interface EmergencyVehicleFleet {
+  vehicleNumber: string;
+  vehicleType: string;
+  driverName: string;
+  driverPhone: string;
+  standbyPost: string;
+  status: 'STANDBY_READY' | 'EN_ROUTE_KIMS' | 'EN_ROUTE_HITECH' | 'DISPATCHED';
+  nearestHospitals: Array<{
+    name: string;
+    distance: string;
+    etaMinutes: number;
+    phone: string;
+  }>;
 }
 
 export interface AmbulanceReferralRecord {

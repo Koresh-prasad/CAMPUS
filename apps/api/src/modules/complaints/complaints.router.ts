@@ -192,9 +192,9 @@ router.post('/', optionalAuthMiddleware, async (req: Request, res: Response) => 
       priority: complaint.priority,
       photoUrl: complaint.photoUrl,
       videoUrl: complaint.videoUrl,
-      residentName: complaint.isAnonymous ? 'Anonymous Student' : (complaint.resident?.name || studentName || 'Subham Pradhan'),
-      roomNumber: complaint.resident?.residentProfile?.roomNumber || roomNumber || 'A-204',
-      blockName: complaint.resident?.residentProfile?.blockName || blockName || 'Hostel A',
+      residentName: complaint.isAnonymous ? 'Anonymous Student' : (studentName || complaint.resident?.name || 'Subham Pradhan'),
+      roomNumber: roomNumber || complaint.resident?.residentProfile?.roomNumber || 'A-204',
+      blockName: blockName || complaint.resident?.residentProfile?.blockName || 'Hostel A',
       createdAt: complaint.createdAt.toISOString()
     };
 

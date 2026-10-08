@@ -29,6 +29,7 @@ import {
   MedicalLeaveRecord,
   MedicineInventoryItem,
   AmbulanceReferralRecord,
+  StudentMedicineDispenseRecord,
 } from './types';
 
 // ===================================================================
@@ -577,7 +578,7 @@ export function AmbulanceReferralModal({
         <div className="p-5 bg-gradient-to-r from-red-600 to-rose-700 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Ambulance className="w-5 h-5 text-white" />
-            <h3 className="font-extrabold text-sm">Dispatch 24x7 Emergency Ambulance</h3>
+            <h3 className="font-extrabold text-sm">Send 24×7 Ambulance to Hospital</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 cursor-pointer">
             <X className="w-4 h-4 text-white" />
@@ -608,7 +609,7 @@ export function AmbulanceReferralModal({
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Destination Referral Hospital</label>
+            <label className="font-bold text-slate-700 block mb-1">Select Hospital</label>
             <select
               value={destinationHospital}
               onChange={(e) => setDestinationHospital(e.target.value)}
@@ -825,7 +826,7 @@ export function MedicalHelpModal({
         <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <HelpCircle className="w-5 h-5 text-blue-400" />
-            <h3 className="font-extrabold text-sm">Medical Center Protocols & Directory</h3>
+            <h3 className="font-extrabold text-sm">Emergency Phone Numbers & Help</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 cursor-pointer">
             <X className="w-4 h-4 text-white" />
@@ -834,7 +835,7 @@ export function MedicalHelpModal({
 
         <div className="p-5 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
           <div className="bg-red-50 border border-red-200 p-3.5 rounded-2xl space-y-1">
-            <h4 className="font-extrabold text-red-900 text-xs">24x7 Emergency Escalation Protocol</h4>
+            <h4 className="font-extrabold text-red-900 text-xs">Emergency Instructions</h4>
             <p className="text-red-800">
               1. <strong>Severe Trauma / Chest Pain / Unconsciousness:</strong> Call 24x7 Ambulance driver immediately (+91 94370 00108).<br />
               2. <strong>Notify Main Gate Security:</strong> Fast clearance at Gate 1 turnstile barrier.<br />
@@ -875,10 +876,169 @@ export function MedicalHelpModal({
               onClick={onClose}
               className="px-5 py-2 bg-slate-900 hover:bg-black text-white font-bold rounded-xl cursor-pointer"
             >
-              Close Guide
+              Close
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================================================================
+// 7. DISPENSE MEDICINE TO STUDENT MODAL
+// ===================================================================
+export function DispenseMedicineModal({
+  isOpen,
+  onClose,
+  inventory,
+  onDispense,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  inventory: MedicineInventoryItem[];
+  onDispense: (record: Partial<StudentMedicineDispenseRecord>) => void;
+}) {
+  const [studentName, setStudentName] = useState('Subham Pradhan');
+  const [studentRoll, setStudentRoll] = useState('REC-2023-CS042');
+  const [hostelRoom, setHostelRoom] = useState('Nilgiri A-204');
+  const [selectedMedicine, setSelectedMedicine] = useState(
+    inventory[0]?.name || 'Paracetamol 650mg (Dolo 650)'
+  );
+  const [quantity, setQuantity] = useState(1);
+  const [directions, setDirections] = useState('1 tab after food twice daily');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const item = inventory.find((i) => i.name === selectedMedicine) || inventory[0];
+    onDispense({
+      dispenseNumber: `DISP-2026-${Math.floor(100 + Math.random() * 900)}`,
+      studentName,
+      studentRoll,
+      hostelRoom,
+      medicineName: selectedMedicine,
+      quantity,
+      unit: item?.unit || 'Strips',
+      dispensedTime: 'Just now',
+      pharmacistName: 'Mr. Abinash Mohanty',
+      directions,
+      isFreeStudentQuota: true,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800">
+        <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Pill className="w-5 h-5 text-white" />
+            <h3 className="font-extrabold text-sm">Give Free Medicine to Student</h3>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 cursor-pointer">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Student Name</label>
+              <input
+                type="text"
+                required
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Roll / Hostel Room</label>
+              <input
+                type="text"
+                required
+                value={studentRoll}
+                onChange={(e) => setStudentRoll(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Hostel & Room</label>
+            <input
+              type="text"
+              required
+              value={hostelRoom}
+              onChange={(e) => setHostelRoom(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="font-bold text-slate-700 block mb-1">Select Medicine / Supply</label>
+              <select
+                value={selectedMedicine}
+                onChange={(e) => setSelectedMedicine(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold truncate"
+              >
+                {inventory.map((item) => (
+                  <option key={item.id} value={item.name}>
+                    {item.name} ({item.quantity} {item.unit} left)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Qty</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                required
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Dosage Directions & Instructions</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Dissolve in 1L water / 1 tab after food twice daily"
+              value={directions}
+              onChange={(e) => setDirections(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+            />
+          </div>
+
+          <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-[11px] text-emerald-800 space-y-0.5">
+            <p className="font-bold">✓ Student Healthcare Benefit Quota</p>
+            <p className="text-[10px] text-emerald-700">Essential OTC supplies are provided free of cost to enrolled residential students.</p>
+          </div>
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer shadow-xs"
+            >
+              Confirm Dispense
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

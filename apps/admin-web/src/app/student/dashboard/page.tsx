@@ -89,6 +89,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
+import { playCuteNotificationSound, playCuteSuccessSound } from '../../../lib/audioSound';
 
 const API_BASE = '/api';
 
@@ -2226,6 +2227,27 @@ function StudentPortalContent({
   const [showPhotoPreviewModal, setShowPhotoPreviewModal] = useState<string | null>(null);
   const [showSosActiveModal, setShowSosActiveModal] = useState(false);
 
+  // Student Query State (Direct live connect to Admin platform)
+  const [showStudentQueryModal, setShowStudentQueryModal] = useState(false);
+  const [studentQueryCategory, setStudentQueryCategory] = useState('ACADEMIC');
+  const [studentQueryTitle, setStudentQueryTitle] = useState('');
+  const [studentQueryDesc, setStudentQueryDesc] = useState('');
+  const [studentQueryPriority, setStudentQueryPriority] = useState<'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
+  const [studentQuerySubmitting, setStudentQuerySubmitting] = useState(false);
+
+  // Medical Request State (Direct live connect to Campus Doctor)
+  const [medSymptom, setMedSymptom] = useState('Fever / Headache');
+  const [medMedicine, setMedMedicine] = useState('Paracetamol 650mg');
+  const [medUrgency, setMedUrgency] = useState<'NORMAL' | 'URGENT' | 'EMERGENCY'>('NORMAL');
+  const [medNotes, setMedNotes] = useState('');
+  const [medSubmitting, setMedSubmitting] = useState(false);
+
+  // Mess Issue State
+  const [messMealType, setMessMealType] = useState('LUNCH');
+  const [messCategory, setMessCategory] = useState('Food Quality');
+  const [messIssueNote, setMessIssueNote] = useState('');
+  const [messSubmitting, setMessSubmitting] = useState(false);
+
   // Emergency SOS enhanced state
   const [sosCategory, setSosCategory] = useState<'MEDICAL' | 'SECURITY' | 'WARDEN' | 'FIRE' | 'RAGGING' | 'COUNSELING'>('MEDICAL');
   const [isSilentSos, setIsSilentSos] = useState(false);
@@ -2792,10 +2814,16 @@ function StudentPortalContent({
     });
 
     socket.on('complaint:update', () => {
+      playCuteNotificationSound();
       fetchStudentData();
     });
 
     socket.on('complaint:created', () => {
+      fetchStudentData();
+    });
+
+    socket.on('pass:status_update', () => {
+      playCuteNotificationSound();
       fetchStudentData();
     });
 
@@ -2842,6 +2870,7 @@ function StudentPortalContent({
         motherPhone: motherPhone || '+91 94371 67890',
       });
 
+      playCuteSuccessSound();
       setSubmitSuccess('Gate Pass submitted & approved by Warden!');
       setShowPassModal(false);
       setTimeout(() => setSubmitSuccess(''), 4000);
@@ -3008,6 +3037,7 @@ function StudentPortalContent({
         }
       }
 
+      playCuteSuccessSound();
       setSubmitSuccess('⚠️ Grievance ticket created! Direct real-time WebSocket alert beamed to Admin Platform.');
       setShowComplaintModal(false);
       setComplaintTitle('');
@@ -3055,6 +3085,145 @@ function StudentPortalContent({
     setShowSosActiveModal(false);
     setSubmitSuccess('Emergency SOS dismissed. Campus Security & Warden desks have been notified that you are safe.');
     setTimeout(() => setSubmitSuccess(''), 5000);
+  };
+
+  // Submit Student Query Direct to Admin Platform
+  const handleSubmitStudentQuery = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!studentQueryDesc.trim() && !studentQueryTitle.trim()) {
+      alert('Please describe your query.');
+      return;
+    }
+    setStudentQuerySubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/complaints`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category: studentQueryCategory,
+          title: studentQueryTitle.trim() || `Student Query (${studentQueryCategory})`,
+          description: studentQueryDesc.trim(),
+          priority: studentQueryPriority,
+          studentName: effectiveStudentName,
+          roomNumber: effectiveRoom,
+          blockName: effectiveHostel,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.complaint) {
+          setComplaints((prev) => [data.complaint, ...prev]);
+        }
+        playCuteSuccessSound();
+        setSubmitSuccess('✓ Student query submitted! Direct notification beamed to Admin & Staff Platform.');
+        setShowStudentQueryModal(false);
+        setStudentQueryTitle('');
+        setStudentQueryDesc('');
+        setTimeout(() => setSubmitSuccess(''), 6000);
+      } else {
+        alert('Could not submit query right now. Please try again.');
+      }
+    } catch (err) {
+      console.error('Submit query error:', err);
+      alert('Failed to connect to campus network.');
+    } finally {
+      setStudentQuerySubmitting(false);
+    }
+  };
+
+  // Submit Medical Request to Campus Doctor & Pharmacy
+  const handleSubmitMedicalRequest = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setMedSubmitting(true);
+    try {
+      const payload = {
+        symptoms: medSymptom,
+        medicineNeeded: medMedicine,
+        urgency: medUrgency,
+        notes: medNotes,
+        studentName: effectiveStudentName,
+        roomNumber: effectiveRoom,
+        blockName: effectiveHostel,
+      };
+
+      const res = await fetch(`${API_BASE}/medical/requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        await fetch(`${API_BASE}/complaints`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            category: 'MEDICAL',
+            title: `Medical: ${medSymptom}`,
+            description: `Health problem: ${medSymptom} | Medicine needed: ${medMedicine} | Notes: ${medNotes}`,
+            priority: medUrgency === 'EMERGENCY' ? 'CRITICAL' : medUrgency === 'URGENT' ? 'HIGH' : 'MEDIUM',
+            studentName: effectiveStudentName,
+            roomNumber: effectiveRoom,
+            blockName: effectiveHostel,
+          }),
+        });
+      }
+
+      playCuteSuccessSound();
+      setSubmitSuccess('✓ Medical request sent! Campus doctor and dispensary notified.');
+      setShowMedicalRequestModal(false);
+      setMedNotes('');
+      setTimeout(() => setSubmitSuccess(''), 6000);
+    } catch (err) {
+      console.error('Submit medical error:', err);
+    } finally {
+      setMedSubmitting(false);
+    }
+  };
+
+  // Submit Mess Issue / Meal Feedback
+  const handleSubmitMessIssue = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!messIssueNote.trim()) {
+      alert('Please provide feedback details.');
+      return;
+    }
+    setMessSubmitting(true);
+    try {
+      await fetch(`${API_BASE}/complaints`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category: 'MESS',
+          title: `Mess ${messMealType}: ${messCategory}`,
+          description: `Meal: ${messMealType} | Issue: ${messCategory} | Feedback: ${messIssueNote.trim()}`,
+          priority: 'MEDIUM',
+          studentName: effectiveStudentName,
+          roomNumber: effectiveRoom,
+          blockName: effectiveHostel,
+        }),
+      });
+      playCuteSuccessSound();
+      setSubmitSuccess('✓ Mess feedback submitted! Notified mess supervisor.');
+      setShowMessIssueModal(false);
+      setMessIssueNote('');
+      setTimeout(() => setSubmitSuccess(''), 6000);
+    } catch (err) {
+      console.error('Mess issue error:', err);
+    } finally {
+      setMessSubmitting(false);
+    }
   };
 
   // Handle Like / Cheer Gallery Item
@@ -3280,6 +3449,25 @@ function StudentPortalContent({
               </span>
             )}
 
+            {/* Cute Notification Chime Sound Preview */}
+            <button
+              onClick={() => playCuteNotificationSound()}
+              title="Test cute notification sound ✨"
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200 text-xs font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <span>🔔</span>
+              <span className="hidden sm:inline">Cute Sound</span>
+            </button>
+
+            {/* Quick Ask Query button */}
+            <button
+              onClick={() => setShowStudentQueryModal(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Ask Query</span>
+            </button>
+
             {/* Quick SOS button */}
             <button
               onClick={() => setActiveTab('EMERGENCY')}
@@ -3344,9 +3532,20 @@ function StudentPortalContent({
           {/* ========================================================= */}
           {activeTab === 'HOME' && (
             <div className="space-y-6">
-              {/* Student Welcome Banner with Direct Upload Photo Label */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-800 text-white p-6 shadow-xl">
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Student Welcome Banner with Panoramic Campus Background */}
+              <div className="relative rounded-3xl overflow-hidden shadow-xl border border-blue-500/30 min-h-[160px] flex items-center bg-[#07478a]">
+                {/* Campus Background Image */}
+                <img
+                  src="/images/rec-campus-overview.jpg"
+                  alt="Raajdhani Engineering College Campus"
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                />
+
+                {/* Smooth Blue Gradient: Solid blue on left for text readability, fading to clear campus building on right */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#034a94] via-[#085aa8]/90 via-35% md:via-48% to-transparent" />
+
+                {/* Banner Content */}
+                <div className="relative z-10 w-full p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center space-x-4">
                     <label
                       htmlFor="student-banner-avatar-upload"
@@ -3380,20 +3579,38 @@ function StudentPortalContent({
                         <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-emerald-950 text-[10px] font-black uppercase tracking-wider">
                           Active Resident
                         </span>
-                        <span className="text-xs text-blue-200">
+                        <span className="text-xs text-blue-200 font-mono">
                           ID: {user?.studentId || 'CS-2023-042'}
                         </span>
                       </div>
-                      <h2 className="text-xl md:text-2xl font-black mt-0.5">
+                      <h2 className="text-xl md:text-2xl font-black mt-0.5 text-white tracking-tight">
                         Welcome Back, {effectiveStudentName}!
                       </h2>
-                      <p className="text-xs text-blue-100">
+                      <p className="text-xs text-blue-100 font-medium">
                         B.Tech Computer Science & Engineering • 3rd Year (Sem 5) • {effectiveHostel} ({effectiveRoom})
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Floating REC Campus Badge Card */}
+                    <div
+                      onClick={() => setActiveTab('COLLEGE_INFO')}
+                      className="flex items-center space-x-3 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/50 shadow-lg text-slate-800 hover:bg-white transition cursor-pointer self-start md:self-auto shrink-0"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Building className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 pr-1 text-left">
+                        <p className="text-xs font-black text-slate-900 leading-tight">
+                          Raajdhani Engineering College
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Bhubaneswar, Odisha
+                        </p>
+                      </div>
+                    </div>
+
                     <label
                       htmlFor="student-banner-avatar-upload"
                       className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-1.5 cursor-pointer"
@@ -3418,9 +3635,6 @@ function StudentPortalContent({
                     </button>
                   </div>
                 </div>
-
-                <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/5 rounded-full pointer-events-none"></div>
-                <div className="absolute -bottom-16 right-36 w-60 h-60 bg-blue-500/10 rounded-full pointer-events-none"></div>
               </div>
 
               {/* 4 Summary Metric Cards */}
@@ -3472,6 +3686,64 @@ function StudentPortalContent({
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
                     <AlertTriangle className="w-6 h-6" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Campus Landmark & Overview Showcase Card */}
+              <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200 bg-white group">
+                <div className="relative h-48 md:h-64 w-full overflow-hidden">
+                  <img
+                    src="/images/rec-campus-overview.jpg"
+                    alt="Raajdhani Engineering College [REC] Bhubaneswar Campus"
+                    className="w-full h-full object-cover object-center group-hover:scale-102 transition duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent flex items-end p-5 md:p-6">
+                    <div className="text-white space-y-1">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider">
+                        CAMPUS HEADQUARTERS & RESIDENCE
+                      </span>
+                      <h3 className="text-lg md:text-xl font-black tracking-tight">
+                        Raajdhani Engineering College [REC], Bhubaneswar
+                      </h3>
+                      <p className="text-xs text-slate-200 flex items-center space-x-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>Near Mancheswar Railway Station, Mancheswar Railway Colony, Bhubaneswar, Odisha 751017</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-4 text-slate-600 font-medium">
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span>Hostel Block A & B</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span>Central Academic Block</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                      <span>Health Center Bay 5</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('CAMPUS_MAP')}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center space-x-1"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>View Campus Map</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('COLLEGE_INFO')}
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition cursor-pointer"
+                    >
+                      College Details
+                    </button>
                   </div>
                 </div>
               </div>
@@ -3645,7 +3917,7 @@ function StudentPortalContent({
                     { label: 'Timetable', icon: Clock, action: () => setActiveTab('ACADEMIC'), color: 'text-sky-600 bg-sky-50 hover:bg-sky-100' },
                     { label: 'Campus Map', icon: MapPin, action: () => setActiveTab('CAMPUS_MAP'), color: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
                     { label: 'Pharmacy & Vehicle', icon: Heart, action: () => setActiveTab('MEDICAL'), color: 'text-rose-600 bg-rose-50 hover:bg-rose-100' },
-                    { label: 'Raise Grievance', icon: AlertTriangle, action: () => setShowComplaintModal(true), color: 'text-amber-600 bg-amber-50 hover:bg-amber-100' },
+                    { label: 'Ask Query / Help', icon: MessageSquare, action: () => setShowStudentQueryModal(true), color: 'text-amber-600 bg-amber-50 hover:bg-amber-100' },
                     { label: 'Docs & Certs', icon: Award, action: () => setActiveTab('QUALIFICATIONS'), color: 'text-teal-600 bg-teal-50 hover:bg-teal-100' },
                   ].map((service, idx) => {
                     const SIcon = service.icon;
@@ -6641,9 +6913,43 @@ function StudentPortalContent({
                 </div>
               </div>
 
-              {/* 3 Core Honest Cards as requested by user */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* 1. 💊 Campus Pharmacy */}
+              {/* 4 Core Cards: Request Medicine, Pharmacy, Ambulance, Helpline */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. 🩺 Request Medical Help / Medicine */}
+                <div className="bg-white p-5 rounded-3xl border-2 border-emerald-500/30 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4 relative overflow-hidden">
+                  <div className="space-y-3">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-xs border border-emerald-200">
+                      🩺
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Live Connect
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 mt-1">Request Medicine / Help</h3>
+                      <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                        Need medicines, first-aid, or feel unwell in room?
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100 text-xs space-y-1 text-slate-600">
+                      <p className="text-[11px] font-bold text-emerald-800">
+                        ✓ Direct Doctor Notification
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        Doctor &amp; Pharmacist alerted with your room number.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowMedicalRequestModal(true)}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Request Medicine / Help</span>
+                  </button>
+                </div>
+
+                {/* 2. 💊 Campus Pharmacy */}
                 <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-5">
                   <div className="space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-xs border border-emerald-100">
@@ -10351,6 +10657,335 @@ function StudentPortalContent({
                 <button
                   type="button"
                   onClick={() => setShowComplaintModal(false)}
+                  className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 1. STUDENT QUERY MODAL (ANY QUERY DIRECT TO ADMIN PLATFORM) */}
+      {showStudentQueryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
+                  <Zap className="w-3 h-3 text-blue-600" />
+                  <span>Real-Time Admin Alert Connected</span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-1">
+                  Ask Campus Query / Helpdesk
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Ask any question about academics, hostel, mess, fees, or campus life.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStudentQueryModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitStudentQuery} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Query Category *</label>
+                <select
+                  value={studentQueryCategory}
+                  onChange={(e) => setStudentQueryCategory(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="ACADEMIC">🎓 Academic &amp; Exams (Classes, syllabus, faculty)</option>
+                  <option value="HOSTEL">🏠 Hostel &amp; Living (Room shift, furniture, water, electricity)</option>
+                  <option value="MESS">🍽️ Mess &amp; Food (Dining quality, menu, timings)</option>
+                  <option value="MEDICAL">💊 Medical &amp; Health (Consultation, dispensary, medicine)</option>
+                  <option value="FEES">💳 Fees &amp; Accounts (Dues, receipts, payments)</option>
+                  <option value="MAINTENANCE">💡 Maintenance &amp; Wi-Fi (Repairs, cleaning, internet)</option>
+                  <option value="STUDENT_QUERY">❓ General Question / Campus Help</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Query Subject / Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., Doubts regarding upcoming semester exam schedule"
+                  value={studentQueryTitle}
+                  onChange={(e) => setStudentQueryTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Explain Your Query in Simple Words *</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={studentQueryDesc}
+                  onChange={(e) => setStudentQueryDesc(e.target.value)}
+                  placeholder="Write your question or problem clearly here..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 leading-relaxed"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Student Details</label>
+                  <div className="px-3 py-2 bg-slate-100 rounded-xl text-[11px] font-bold text-slate-700">
+                    {effectiveStudentName} ({effectiveRoom})
+                  </div>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Urgency</label>
+                  <select
+                    value={studentQueryPriority}
+                    onChange={(e: any) => setStudentQueryPriority(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                  >
+                    <option value="MEDIUM">🔵 Normal Query</option>
+                    <option value="HIGH">🟠 Urgent (Need fast reply)</option>
+                    <option value="CRITICAL">🔴 Critical (Immediate response)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-800 flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>When you submit, an audible chime and banner instantly alert the Admin Platform.</span>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={studentQuerySubmitting}
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl shadow-md transition cursor-pointer flex items-center justify-center space-x-1.5 disabled:opacity-60"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{studentQuerySubmitting ? 'Beaming to Admin...' : 'Submit Query to Admin'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStudentQueryModal(false)}
+                  className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. MEDICAL REQUEST MODAL (DIRECT LIVE CONNECT TO CAMPUS DOCTOR & PHARMACY) */}
+      {showMedicalRequestModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  <Heart className="w-3 h-3 text-emerald-600" />
+                  <span>Direct to Campus Doctor &amp; Pharmacy</span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-1">
+                  Request Medicine / Medical Help
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Doctor Dr. Pratima Mishra &amp; Pharmacist Abinash Mohanty will be alerted.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMedicalRequestModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitMedicalRequest} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">What is your health problem / sickness? *</label>
+                <select
+                  value={medSymptom}
+                  onChange={(e) => setMedSymptom(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                >
+                  <option value="Fever / High Temperature">🤒 Fever / High Temperature</option>
+                  <option value="Headache / Migraine">🤕 Headache / Migraine</option>
+                  <option value="Common Cold & Cough">🤧 Common Cold &amp; Cough / Sore Throat</option>
+                  <option value="Stomachache / Acidity / Vomiting">🤢 Stomach Pain / Acidity / Vomiting</option>
+                  <option value="Minor Cut / Injury / Dressing needed">🩹 Minor Cut / Wound / Dressing</option>
+                  <option value="Dehydration / Dizziness">💧 Dehydration / Weakness / Dizziness</option>
+                  <option value="Eye Irritation / Redness">👁️ Eye Irritation / Redness</option>
+                  <option value="Body Pain / Muscle Sprain">💪 Body Pain / Muscle Sprain</option>
+                  <option value="Other Medical Assistance">❓ Other Health Issue</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Free Student Medicine Needed (Optional)</label>
+                <select
+                  value={medMedicine}
+                  onChange={(e) => setMedMedicine(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                >
+                  <option value="Paracetamol 650mg (Dolo / Calpol) - For Fever & Pain">💊 Paracetamol 650mg (For Fever &amp; Pain)</option>
+                  <option value="Cetirizine 10mg - For Allergy & Cold">💊 Cetirizine 10mg (For Allergy &amp; Cold)</option>
+                  <option value="ORS Electrolyte Sachet - For Dehydration">💧 ORS Electrolyte Sachet (For Dehydration)</option>
+                  <option value="Digene / Pantoprazole - For Acidity & Gas">💊 Digene / Pantoprazole (For Acidity &amp; Gas)</option>
+                  <option value="Bandage, Dettol & Cotton Kit">🩹 Bandage, Dettol &amp; Cotton Kit</option>
+                  <option value="Ibuprofen 400mg - For Muscle Pain">💊 Ibuprofen 400mg (For Muscle Pain)</option>
+                  <option value="Cough Syrup (Ascoril / Benadryl)">🧴 Cough Syrup (Sore throat)</option>
+                  <option value="None - Just Doctor Consultation / Checkup">👨‍⚕️ None - Just Doctor Consultation / Checkup</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Urgency Level *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'NORMAL', label: '🔵 Normal', desc: 'Need medicine today' },
+                    { id: 'URGENT', label: '🟠 Urgent', desc: 'Need within 1 hour' },
+                    { id: 'EMERGENCY', label: '🔴 Emergency', desc: 'Need doctor / vehicle now' },
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      type="button"
+                      onClick={() => setMedUrgency(lvl.id as any)}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition ${
+                        medUrgency === lvl.id
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold ring-2 ring-emerald-500/30'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <p className="text-xs font-bold">{lvl.label}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{lvl.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Additional Notes / Sickness Details</label>
+                <textarea
+                  rows={2}
+                  value={medNotes}
+                  onChange={(e) => setMedNotes(e.target.value)}
+                  placeholder="e.g. Feeling feverish since 6 AM, having shivering and headache..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
+                />
+              </div>
+
+              <div className="bg-slate-100 p-2.5 rounded-xl text-[11px] text-slate-700">
+                Patient: <strong>{effectiveStudentName}</strong> • Room: <strong>{effectiveRoom}</strong> ({effectiveHostel})
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={medSubmitting}
+                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black rounded-xl shadow-md transition cursor-pointer flex items-center justify-center space-x-1.5 disabled:opacity-60"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{medSubmitting ? 'Sending Request...' : 'Send Medical Request to Doctor'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMedicalRequestModal(false)}
+                  className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. MESS ISSUE / MEAL FEEDBACK MODAL */}
+      {showMessIssueModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  🍽️ Report Mess Issue / Meal Feedback
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Directly notifies the Mess Supervisor &amp; Campus Admin.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMessIssueModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitMessIssue} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Meal *</label>
+                  <select
+                    value={messMealType}
+                    onChange={(e) => setMessMealType(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                  >
+                    <option value="BREAKFAST">🍳 Breakfast</option>
+                    <option value="LUNCH">🍛 Lunch</option>
+                    <option value="SNACKS">☕ Evening Snacks</option>
+                    <option value="DINNER">🍲 Dinner</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Issue Category *</label>
+                  <select
+                    value={messCategory}
+                    onChange={(e) => setMessCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                  >
+                    <option value="Food Quality">Taste &amp; Quality</option>
+                    <option value="Hygiene & Cleanliness">Hygiene &amp; Cleanliness</option>
+                    <option value="Cold Food">Food Served Cold</option>
+                    <option value="Food Shortage">Item Ran Out / Shortage</option>
+                    <option value="Staff Behavior">Mess Staff Feedback</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Feedback / Issue Details *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={messIssueNote}
+                  onChange={(e) => setMessIssueNote(e.target.value)}
+                  placeholder="Explain the meal feedback clearly..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={messSubmitting}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition cursor-pointer flex items-center justify-center space-x-1.5 disabled:opacity-60"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{messSubmitting ? 'Submitting...' : 'Submit Mess Feedback'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMessIssueModal(false)}
                   className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl cursor-pointer"
                 >
                   Cancel

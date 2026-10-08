@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import {
   Users,
   UserCheck,
@@ -1424,7 +1425,61 @@ export function AdminServiceMaintenanceView() {
 }
 
 export function AdminMedicalManagementView() {
-  const [medSubTab, setMedSubTab] = useState<'CONSULTATIONS' | 'LEAVE' | 'AMBULANCE' | 'MEDICINES'>('CONSULTATIONS');
+  const [medSubTab, setMedSubTab] = useState<'REQUESTS' | 'MEDICINES' | 'AMBULANCE'>('REQUESTS');
+  const [medicalRequests, setMedicalRequests] = useState<any[]>(INITIAL_MEDICAL_REQUESTS);
+
+  // Sync with live backend API & WebSockets
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
+        const res = await fetch(`${apiOrigin}/api/medical/requests`, { credentials: 'omit' }).catch(() => null);
+        if (res && res.ok) {
+          const apiData = await res.json();
+          if (Array.isArray(apiData) && apiData.length > 0) {
+            setMedicalRequests((prev) => {
+              const prevIds = new Set(prev.map((r) => r.id || r.ticketNumber));
+              const fresh = apiData.filter((r: any) => !prevIds.has(r.id) && !prevIds.has(r.ticketNumber));
+              return [...fresh, ...prev];
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Medical requests fetch notice:', e);
+      }
+    };
+
+    fetchRequests();
+
+    const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
+    socket.on('medical:request_created', (data: any) => {
+      console.log('💊 Live medical request received in admin component:', data);
+      setMedicalRequests((prev) => {
+        const id = data.id || data.ticketNumber;
+        if (prev.some((r) => r.id === id || r.ticketNumber === data.ticketNumber)) return prev;
+        return [
+          {
+            id: id || `med-${Date.now()}`,
+            ticketNumber: data.ticketNumber || `MED-${Math.floor(1000 + Math.random() * 9000)}`,
+            studentName: data.studentName || data.residentName || 'Student Patient',
+            studentRoll: data.studentRoll || 'REC-STU',
+            hostel: data.hostel || data.blockName || 'Campus Hostel',
+            room: data.room || data.roomNumber || 'Room',
+            requestType: data.urgency === 'EMERGENCY' ? 'Emergency' : 'Illness',
+            urgency: data.urgency || 'NORMAL',
+            description: data.description || 'Medical consultation requested',
+            status: data.status || 'New',
+            dateTime: 'Just now',
+          },
+          ...prev,
+        ];
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -1433,10 +1488,10 @@ export function AdminMedicalManagementView() {
         <div>
           <div className="flex items-center space-x-2">
             <Heart className="w-5 h-5 text-rose-600" />
-            <h3 className="text-base font-black text-slate-900">Campus Healthcare, Clinic & Ambulance Command</h3>
+            <h3 className="text-base font-black text-slate-900">Campus Medical & Health Center</h3>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Operational monitoring of student health triage, CMO sick-leave certifications, and 24x7 ambulance.
+            Monitor student medical requests, emergency alerts, pharmacy medicine stock, and 24x7 ambulance.
           </p>
         </div>
         <a
@@ -1445,7 +1500,7 @@ export function AdminMedicalManagementView() {
           rel="noopener noreferrer"
           className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs self-start sm:self-auto cursor-pointer"
         >
-          <span>Launch Medical Hub</span>
+          <span>Open Medical Center</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
@@ -1465,34 +1520,33 @@ export function AdminMedicalManagementView() {
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase">Consultations Today</p>
-          <h4 className="text-2xl font-black text-slate-900 mt-1">{INITIAL_MEDICAL_REQUESTS.length}</h4>
-          <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Health center triage queue</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase">Student Requests</p>
+          <h4 className="text-2xl font-black text-slate-900 mt-1">{medicalRequests.length}</h4>
+          <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Live student health requests</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase">Active Medical Leave</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase">Emergency Alerts</p>
           <h4 className="text-2xl font-black text-purple-600 mt-1">{INITIAL_MEDICAL_LEAVES.length}</h4>
           <p className="text-[10px] text-purple-600 font-semibold mt-0.5">CMO certified bed rest</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase">24x7 Ambulance</p>
           <h4 className="text-2xl font-black text-emerald-600 mt-1">Ready</h4>
-          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">OD-02-AMB-108 Stationed at Porch</p>
+          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Ready at Main Gate 1</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase">Dispensary Stock</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase">Campus Pharmacy</p>
           <h4 className="text-2xl font-black text-slate-900 mt-1">{INITIAL_MEDICINE_INVENTORY.length} Medicines</h4>
-          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Essential emergency supplies</p>
+          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">10 free student medicines</p>
         </div>
       </div>
 
       {/* Subtabs Bar */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap gap-2 shadow-2xs">
         {[
-          { id: 'CONSULTATIONS', label: 'Consultation Queue' },
-          { id: 'LEAVE', label: 'Certified Medical Leave' },
-          { id: 'AMBULANCE', label: 'Ambulance & Hospital Referrals' },
-          { id: 'MEDICINES', label: 'Dispensary Inventory' },
+          { id: 'REQUESTS', label: 'Student Requests' },
+          { id: 'MEDICINES', label: 'Campus Pharmacy' },
+          { id: 'AMBULANCE', label: '24×7 Ambulance' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -1510,11 +1564,11 @@ export function AdminMedicalManagementView() {
 
       {/* Content */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-        {medSubTab === 'CONSULTATIONS' && (
+        {medSubTab === 'REQUESTS' && (
           <div className="space-y-3">
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Health Center Consultation Queue</h4>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Student Medical Requests</h4>
             <div className="divide-y divide-slate-100">
-              {INITIAL_MEDICAL_REQUESTS.map((req) => (
+              {medicalRequests.map((req) => (
                 <div key={req.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <div className="flex items-center space-x-2">
@@ -1549,40 +1603,9 @@ export function AdminMedicalManagementView() {
           </div>
         )}
 
-        {medSubTab === 'LEAVE' && (
-          <div className="space-y-3">
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-              CMO-Certified Medical Bed-Rest Leave (Operational Sync to Warden)
-            </h4>
-            <div className="divide-y divide-slate-100">
-              {INITIAL_MEDICAL_LEAVES.map((rec) => (
-                <div key={rec.id} className="py-3 flex items-center justify-between text-xs">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-slate-900">{rec.studentName}</span>
-                      <span className="font-mono text-slate-500">({rec.studentRoll})</span>
-                      <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-bold text-[10px]">
-                        {rec.days} Days Bed Rest
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
-                      Leave Window: {rec.startDate} to {rec.endDate} • Certified by: {rec.recommendedBy}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                      {rec.wardenNotified ? 'Synced with Warden' : 'Pending Sync'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {medSubTab === 'AMBULANCE' && (
           <div className="space-y-4">
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Campus Ambulance & Referrals</h4>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">24×7 Ambulance & Hospital Transfers</h4>
             <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200 flex items-center justify-between">
               <div>
                 <p className="text-sm font-black text-rose-900">Campus 24x7 Ambulance Unit 1 (ALS)</p>
@@ -1617,7 +1640,7 @@ export function AdminMedicalManagementView() {
 
         {medSubTab === 'MEDICINES' && (
           <div className="space-y-3">
-            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Health Dispensary Pharmacy Stock</h4>
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Campus Pharmacy Stock (10 Free Student Medicines)</h4>
             <div className="divide-y divide-slate-100">
               {INITIAL_MEDICINE_INVENTORY.map((med) => (
                 <div key={med.id} className="py-2.5 flex items-center justify-between text-xs">
@@ -1990,138 +2013,8 @@ export function AdminVisitorManagementView() {
 // =========================================================================
 // 6. MESS MANAGEMENT VIEW
 // =========================================================================
-export function AdminMessManagementView() {
-  const [selectedDay, setSelectedDay] = useState('Today (Tuesday)');
+export { AdminMessManagementView } from './modules/AdminMessManagementView';
 
-  const daysMenu: Record<string, { b: string; l: string; s: string; d: string }> = {
-    'Today (Tuesday)': {
-      b: 'Idli, Sambar, Coconut Chutney, Boiled Eggs / Banana, Tea & Coffee',
-      l: 'Rice, Dal Makhani, Mixed Vegetable Curry, Dahi Salad, Papad',
-      s: 'Vegetable Samosa, Green Mint Chutney, Hot Masala Tea',
-      d: 'Roti, Jeera Rice, Paneer Butter Masala / Chicken Curry, Gulab Jamun',
-    },
-    Wednesday: {
-      b: 'Poha, Aloo Bhaji, Sprouts, Boiled Eggs / Apple, Tea & Coffee',
-      l: 'Rice, Yellow Tadka Dal, Fish Curry / Aloo Gobi Matar, Curd, Pickle',
-      s: 'Biscuits, Masala Puffed Rice, Ginger Tea',
-      d: 'Phulka, Fried Rice, Chana Masala, Ice Cream',
-    },
-    Thursday: {
-      b: 'Uttapam, Tomato Onion Chutney, Banana, Milk & Coffee',
-      l: 'Khichdi, Begun Bhaja, Tomato Khatta, Papad, Ghee',
-      s: 'Veg Cutlet, Tomato Sauce, Tea',
-      d: 'Roti, Dal Fry, Egg Curry / Kadhai Paneer, Semolina Halwa',
-    },
-    Friday: {
-      b: 'Upma with Chana Ghugni, Boiled Eggs, Tea & Coffee',
-      l: 'Rice, Sambhar, Bhindi Fry, Curd, Roasted Papad',
-      s: 'Onion Pakoda, Pudina Chutney, Tea',
-      d: 'Butter Naan, Rice, Mutton Curry / Shahi Paneer, Rasgulla',
-    },
-  };
-
-  const current = daysMenu[selectedDay] || daysMenu['Today (Tuesday)'];
-
-  return (
-    <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Utensils className="w-5 h-5 text-amber-600" />
-            <h3 className="text-base font-black text-slate-900">Campus Dining & Hostel Mess Administration</h3>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Configure weekly meal plans, food quality inspections, dietary feedback, and meal timings.
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200">
-            FSSAI License: 120240019281 (Valid)
-          </span>
-        </div>
-      </div>
-
-      {/* 4 Mess Timing Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Breakfast</p>
-          <h4 className="text-sm font-black text-slate-900">07:30 AM – 09:30 AM</h4>
-          <p className="text-[10px] text-slate-500">Morning service (Hostel dining hall)</p>
-        </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Lunch</p>
-          <h4 className="text-sm font-black text-slate-900">12:30 PM – 02:30 PM</h4>
-          <p className="text-[10px] text-slate-500">Full buffet service</p>
-        </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Evening Snacks</p>
-          <h4 className="text-sm font-black text-slate-900">05:00 PM – 06:30 PM</h4>
-          <p className="text-[10px] text-slate-500">Tea & light refreshments</p>
-        </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Dinner</p>
-          <h4 className="text-sm font-black text-slate-900">08:00 PM – 10:00 PM</h4>
-          <p className="text-[10px] text-slate-500">Hot meals & dessert</p>
-        </div>
-      </div>
-
-      {/* Day Selector */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap gap-2 shadow-2xs">
-        {['Today (Tuesday)', 'Wednesday', 'Thursday', 'Friday'].map((day) => (
-          <button
-            key={day}
-            onClick={() => setSelectedDay(day)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              selectedDay === day
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {day}
-          </button>
-        ))}
-      </div>
-
-      {/* Menu Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="font-bold text-xs text-amber-700 uppercase tracking-wider">Breakfast Menu</span>
-            <span className="text-[10px] text-slate-400 font-semibold">07:30 - 09:30 AM</span>
-          </div>
-          <p className="text-xs text-slate-800 font-medium leading-relaxed">{current.b}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="font-bold text-xs text-blue-700 uppercase tracking-wider">Lunch Menu</span>
-            <span className="text-[10px] text-slate-400 font-semibold">12:30 - 02:30 PM</span>
-          </div>
-          <p className="text-xs text-slate-800 font-medium leading-relaxed">{current.l}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="font-bold text-xs text-emerald-700 uppercase tracking-wider">Evening Snacks</span>
-            <span className="text-[10px] text-slate-400 font-semibold">05:00 - 06:30 PM</span>
-          </div>
-          <p className="text-xs text-slate-800 font-medium leading-relaxed">{current.s}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="font-bold text-xs text-purple-700 uppercase tracking-wider">Dinner Menu</span>
-            <span className="text-[10px] text-slate-400 font-semibold">08:00 - 10:00 PM</span>
-          </div>
-          <p className="text-xs text-slate-800 font-medium leading-relaxed">{current.d}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =========================================================================
 // 7. ACADEMIC & CAMPUS CALENDAR VIEW
 // =========================================================================
 export function AdminCalendarView() {

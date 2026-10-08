@@ -26,6 +26,7 @@ import managerProfileRouter from './modules/manager-profile/managerProfile.route
 import galleryRouter from './modules/gallery/gallery.router';
 import calendarRouter from './modules/calendar/calendar.router';
 import campusMapRouter from './modules/campus-map/campusMap.router';
+import medicalRouter from './modules/medical/medical.router';
 import { bootstrapDatabase } from './bootstrap';
 import path from 'path';
 import fs from 'fs';
@@ -86,6 +87,7 @@ app.use('/api/manager-profile', managerProfileRouter);
 app.use('/api/gallery', galleryRouter);
 app.use('/api/calendar', calendarRouter);
 app.use('/api/campus-map', campusMapRouter);
+app.use('/api/medical', medicalRouter);
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, async () => {
