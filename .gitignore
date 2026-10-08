@@ -7,5 +7,6 @@ build
 *.log
 *.sqlite
 *.sqlite-journal
-.turbo
+*.turbo
 .DS_Store
+*.tsbuildinfo

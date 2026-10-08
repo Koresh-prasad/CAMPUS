@@ -2028,20 +2028,20 @@ export default function AdminPanel() {
   return (
     <div className="flex h-screen bg-[#f4f7fc] text-slate-800 overflow-hidden font-sans">
       {/* ================================================== */}
-      {/* 2. LEFT SIDEBAR (Width ~265px, Dark Navy #0a192f)   */}
+      {/* 2. LEFT SIDEBAR (Width ~265px, Clean White & Blue)  */}
       {/* ================================================== */}
-      <aside className="w-[265px] bg-[#0a192f] text-slate-200 border-r border-slate-800 flex flex-col justify-between shrink-0 shadow-xl z-30 select-none">
+      <aside className="w-[265px] bg-white text-slate-800 border-r border-slate-200/90 flex flex-col justify-between shrink-0 shadow-lg z-30 select-none">
         <div className="flex flex-col h-full overflow-hidden">
           {/* Top Brand Header */}
-          <div className="p-4 border-b border-slate-800 flex items-center space-x-3 shrink-0">
+          <div className="p-4 border-b border-slate-100 flex items-center space-x-3 shrink-0">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
               <GraduationCap className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-extrabold text-sm tracking-tight text-white leading-none truncate">
+              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 leading-none truncate">
                 Campus Helper
               </h1>
-              <p className="text-[10px] font-semibold text-sky-400 mt-1 truncate">
+              <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
                 Smart Campus • Better Tomorrow
               </p>
             </div>
@@ -2075,14 +2075,14 @@ export default function AdminPanel() {
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition text-left cursor-pointer group ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
                     <div className="flex items-center space-x-2.5 truncate">
                       <Icon
                         className={`w-4 h-4 shrink-0 ${
-                          isActive ? 'text-white' : 'text-slate-400 group-hover:text-sky-400'
+                          isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
                         }`}
                       />
                       <span className="truncate">{item.label}</span>
@@ -2097,7 +2097,7 @@ export default function AdminPanel() {
                         <ChevronDown
                           className={`w-3.5 h-3.5 transition-transform duration-200 ${
                             isExpanded ? 'rotate-180' : ''
-                          } ${isActive ? 'text-white/80' : 'text-slate-500 group-hover:text-slate-300'}`}
+                          } ${isActive ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600'}`}
                         />
                       )}
                     </div>
@@ -2105,7 +2105,7 @@ export default function AdminPanel() {
 
                   {/* Accordion Sub-Features Tree */}
                   {hasSubs && isExpanded && (
-                    <div className="pl-6 pr-1 py-1 space-y-0.5 border-l-2 border-slate-700 ml-4">
+                    <div className="pl-6 pr-1 py-1 space-y-0.5 border-l-2 border-blue-200 ml-4">
                       {item.subFeatures.map((sub: string) => {
                         const isSubActive = isActive && activeSubTab === sub;
                         return (
@@ -2119,13 +2119,13 @@ export default function AdminPanel() {
                             }}
                             className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-[11px] transition text-left cursor-pointer truncate ${
                               isSubActive
-                                ? 'bg-blue-600/20 text-sky-400 font-extrabold border border-blue-500/30 shadow-2xs'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                ? 'bg-blue-50 text-blue-700 font-extrabold border border-blue-200 shadow-2xs'
+                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                isSubActive ? 'bg-sky-400' : 'bg-slate-600'
+                                isSubActive ? 'bg-blue-600' : 'bg-slate-300'
                               }`}
                             />
                             <span className="truncate">{sub}</span>
@@ -2140,22 +2140,22 @@ export default function AdminPanel() {
           </nav>
 
           {/* Sidebar Bottom Banner & Sign Out */}
-          <div className="p-3 border-t border-slate-800 space-y-2 shrink-0">
+          <div className="p-3 border-t border-slate-100 bg-slate-50/70 space-y-2 shrink-0">
             <div
               className="relative rounded-2xl overflow-hidden p-3 shadow-sm bg-cover bg-center h-22 flex flex-col justify-end"
               style={{ backgroundImage: "url('/images/rec-building.jpg')" }}
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-900/60 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/40 to-transparent pointer-events-none" />
               <div className="relative z-10 text-white text-xs leading-tight">
                 <p className="font-bold text-[11px] leading-snug drop-shadow">Empowering Students</p>
-                <p className="text-[10px] text-slate-300 drop-shadow">Building a Safer Campus</p>
+                <p className="text-[10px] text-slate-200 drop-shadow">Building a Safer Campus</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-rose-500/20 hover:text-rose-400 text-slate-300 text-xs font-bold transition cursor-pointer"
+              className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-white hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 text-slate-600 hover:text-rose-600 text-xs font-bold transition shadow-2xs cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>Sign Out Admin</span>

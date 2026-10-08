@@ -176,6 +176,17 @@ model Pass {
   actualExitAt    DateTime?
   actualReturnAt  DateTime?
   isOverdue       Boolean   @default(false)
+  guardianStatus  String?   @default("PENDING") // PENDING, CONFIRMED_OTP, CONFIRMED_PHONE, PRE_AUTHORIZED
+  guardianPhone   String?
+  parentConsentNote String?
+  attachmentsJson String?
+  wardenNotes     String?
+  facultyRecommendation String?
+  leaveCategory   String?   // MEDICAL, ACADEMIC, EVENT, PERSONAL, EMERGENCY
+  escalationLevel Int       @default(0)
+  historyJson     String?
+  overriddenByAdmin Boolean @default(false)
+  adminOverrideNotes String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   scanLogs        GateScanLog[]

@@ -90,6 +90,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
 import { playCuteNotificationSound, playCuteSuccessSound } from '../../../lib/audioSound';
+import StudentHostelLeaveGatePassView from '../../../components/student-gatepass/StudentHostelLeaveGatePassView';
 
 const API_BASE = '/api';
 
@@ -4424,230 +4425,17 @@ function StudentPortalContent({
           {/* 6. LEAVE & GATE PASS                                      */}
           {/* ========================================================= */}
           {activeTab === 'LEAVE_GATE_PASS' && (
-            <div className="space-y-6">
-              {/* Header Action Bar */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">Leave & Digital Gate Pass Desk</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Official digital pass verification with QR turnstile entry and Warden authorizations
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setPassType('GATE_PASS');
-                      setShowPassModal(true);
-                    }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Apply Gate Pass</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setPassType('HOSTEL_LEAVE');
-                      setShowPassModal(true);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Apply Hostel Leave</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* USER'S EXACT GATE PASS CARD FORMAT */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                <div className="bg-white rounded-3xl border-2 border-emerald-400/80 shadow-lg p-6 font-sans text-slate-800">
-                  <div className="flex items-center justify-between pb-1">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Gate Pass</h3>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                      Active
-                    </span>
-                  </div>
-
-                  <div className="text-slate-300 font-bold select-none text-sm tracking-tighter overflow-hidden">
-                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                  </div>
-
-                  <div className="space-y-2 text-xs pt-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-slate-600">Status:</span>
-                      <span className="font-black text-emerald-600">✅ Approved</span>
-                    </div>
-
-                    <div className="pt-2 space-y-1.5 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Student:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.studentName}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Student Phone:</span>
-                        <span className="font-bold text-blue-600 font-mono">{profilePhone || gatePassData.studentPhone}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Father Phone:</span>
-                        <span className="font-bold text-emerald-700 font-mono">{fatherPhone || gatePassData.fatherPhone}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Mother Phone:</span>
-                        <span className="font-bold text-emerald-700 font-mono">{motherPhone || gatePassData.motherPhone}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Hostel:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.hostel}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Room:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.room}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Purpose:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.purpose}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Out:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.outTime}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Return:</span>
-                        <span className="font-bold text-slate-900">{gatePassData.returnTime}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 space-y-1.5 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Warden:</span>
-                        <span className="font-bold text-emerald-600">Approved ✅</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-500">Security:</span>
-                        <span className="font-bold text-slate-700">Verify at Gate</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={() => setShowGatePassQrModal(true)}
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <QrCode className="w-4 h-4" />
-                      <span>[Show QR Gate Pass]</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Turnstile Instructions */}
-                <div className="bg-gradient-to-tr from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-md space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
-                    <h4 className="text-sm font-black">Gate Turnstile Instructions</h4>
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">
-                      Ready to Scan
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-xs text-slate-300">
-                    <p>• Present the QR Code from <strong>[Show QR Gate Pass]</strong> to the optical scanner at Main Gate 1.</p>
-                    <p>• The automated barrier turnstile unlocks immediately upon successful verification.</p>
-                    <p>• Expected Return Time: <strong>{gatePassData.returnTime}</strong>.</p>
-                    <p>• Security guard desk contact: <strong>+91 94370 12345</strong>.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pass Application History */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h4 className="text-sm font-black text-slate-900">Leave & Gate Pass History</h4>
-                  <span className="text-xs text-slate-400 font-bold">{passes.length || 3} Passes Logged</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                        <th className="py-2.5">Pass ID & Type</th>
-                        <th className="py-2.5">Purpose / Reason</th>
-                        <th className="py-2.5">Out & Return Time</th>
-                        <th className="py-2.5">Destination</th>
-                        <th className="py-2.5">Warden Approval</th>
-                        <th className="py-2.5">Status</th>
-                        <th className="py-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[
-                        {
-                          id: 'GP-9421',
-                          type: 'HOSTEL_LEAVE',
-                          reason: gatePassData.purpose,
-                          out: gatePassData.outTime,
-                          ret: gatePassData.returnTime,
-                          dest: 'Home Visit, Bhubaneswar',
-                          warden: 'Dr. K.P. Mohapatra (Approved ✅)',
-                          status: 'APPROVED',
-                        },
-                        {
-                          id: 'LV-3829',
-                          type: 'HOSTEL_LEAVE',
-                          reason: 'Family wedding & festival holiday',
-                          out: 'Sep 26, 2026',
-                          ret: 'Sep 29, 2026',
-                          dest: 'Plot 42 Green Ave, Cuttack',
-                          warden: 'Dr. K.P. Mohapatra (Approved)',
-                          status: 'COMPLETED',
-                        },
-                      ].map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80">
-                          <td className="py-3 font-bold text-slate-900">
-                            <div>{item.id}</div>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              {item.type === 'GATE_PASS' ? 'Gate Pass' : 'Hostel Leave'}
-                            </span>
-                          </td>
-                          <td className="py-3 text-slate-700 max-w-xs truncate">{item.reason}</td>
-                          <td className="py-3 text-slate-600">
-                            <div>{item.out}</div>
-                            <div className="text-[10px] text-slate-400">Till: {item.ret}</div>
-                          </td>
-                          <td className="py-3 text-slate-600">{item.dest}</td>
-                          <td className="py-3 text-slate-700 font-medium">{item.warden}</td>
-                          <td className="py-3">
-                            <span
-                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                item.status === 'APPROVED'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <button
-                              onClick={() => setShowGatePassQrModal(true)}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-bold text-[11px] cursor-pointer"
-                            >
-                              QR Slip
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <StudentHostelLeaveGatePassView
+              studentProfile={{
+                name: effectiveStudentName,
+                roomNumber: effectiveRoom,
+                blockName: effectiveHostel,
+                phone: profilePhone,
+                parentPhone: fatherPhone || parentPhone,
+                address: parentAddress,
+              }}
+              token={token}
+            />
           )}
 
           {/* ========================================================= */}

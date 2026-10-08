@@ -18,7 +18,12 @@ import SettingsView from '../../../components/SettingsView';
 import AdminGrievanceDeskView from '../../../components/AdminGrievanceDeskView';
 import AdminCentralizedReportsView from '../../../components/AdminCentralizedReportsView';
 import AdminAuditLogsView from '../../../components/AdminAuditLogsView';
-import { playCuteNotificationSound, playCuteSuccessSound } from '../../../lib/audioSound';
+import {
+  playCuteNotificationSound,
+  playCuteSuccessSound,
+  playGatePassUniqueSound,
+  playEmergencySirenSound,
+} from '../../../lib/audioSound';
 import { AdminDashboardOverviewView } from './modules/AdminDashboardOverviewView';
 import {
   LayoutDashboard,
@@ -855,7 +860,7 @@ function AdminPortalContent({
     // 4. Real-Time Gate Pass / Leave Request from Students
     const handlePassIncoming = (data: any) => {
       console.log('⚡ Real-time pass update received in Admin Dashboard:', data);
-      playAdminAudioChime();
+      playGatePassUniqueSound();
       setPasses((prev) => {
         const id = data.passId || data.id;
         const exists = prev.some((p) => (id && p.id === id) || (data.passNumber && p.passNumber === data.passNumber));
@@ -927,7 +932,7 @@ function AdminPortalContent({
     // 5. Emergency SOS Critical Alarm
     const handleEmergencyIncoming = (data: any) => {
       console.log('🚨 EMERGENCY SOS received in Admin Dashboard:', data);
-      playAdminAudioChime();
+      playEmergencySirenSound();
       setActiveSosAlert(data);
       setNotifications((prev) => [
         {
@@ -991,7 +996,13 @@ function AdminPortalContent({
     // 8. Unified Notification Event
     socket.on('notification:new', (payload: any) => {
       console.log('📩 notification:new received in Admin Dashboard:', payload);
-      playAdminAudioChime();
+      if (payload.type === 'EMERGENCY') {
+        playEmergencySirenSound();
+      } else if (payload.type === 'PASS') {
+        playGatePassUniqueSound();
+      } else {
+        playAdminAudioChime();
+      }
       if (payload.title) {
         setSuccessMsg(`${payload.title}: ${payload.message || 'New student action received'}`);
         setTimeout(() => setSuccessMsg(''), 8000);
@@ -1227,8 +1238,8 @@ function AdminPortalContent({
       subtitle: 'Hostel & Student Welfare',
       icon: Building2,
       href: '/admin/warden',
-      cardBg: 'bg-[#0f2922]/80 hover:bg-[#14382e] border-emerald-800/40 text-emerald-300',
-      iconBg: 'bg-emerald-600 text-white',
+      cardBg: 'bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200/90 text-emerald-950',
+      iconBg: 'bg-emerald-600 text-white shadow-2xs',
     },
     {
       id: 'SERVICES',
@@ -1237,8 +1248,8 @@ function AdminPortalContent({
       subtitle: 'Maintenance & Support',
       icon: Wrench,
       href: '/admin/service',
-      cardBg: 'bg-[#2a1d12]/80 hover:bg-[#3d2918] border-amber-800/40 text-amber-300',
-      iconBg: 'bg-amber-600 text-white',
+      cardBg: 'bg-amber-50/80 hover:bg-amber-100/90 border-amber-200/90 text-amber-950',
+      iconBg: 'bg-amber-600 text-white shadow-2xs',
     },
     {
       id: 'SECURITY',
@@ -1247,8 +1258,8 @@ function AdminPortalContent({
       subtitle: 'Safety & Access Control',
       icon: Shield,
       href: '/admin/security',
-      cardBg: 'bg-[#1b1735]/80 hover:bg-[#27214e] border-indigo-800/40 text-indigo-300',
-      iconBg: 'bg-indigo-600 text-white',
+      cardBg: 'bg-indigo-50/80 hover:bg-indigo-100/90 border-indigo-200/90 text-indigo-950',
+      iconBg: 'bg-indigo-600 text-white shadow-2xs',
     },
     {
       id: 'MEDICAL',
@@ -1257,51 +1268,51 @@ function AdminPortalContent({
       subtitle: 'Health & Emergency Care',
       icon: HeartPulse,
       href: '/admin/medical',
-      cardBg: 'bg-[#2a131a]/80 hover:bg-[#3d1a25] border-rose-800/40 text-rose-300',
-      iconBg: 'bg-rose-600 text-white',
+      cardBg: 'bg-rose-50/80 hover:bg-rose-100/90 border-rose-200/90 text-rose-950',
+      iconBg: 'bg-rose-600 text-white shadow-2xs',
     },
   ];
 
   return (
     <div className="flex h-screen bg-[#F4F7FC] text-slate-800 font-sans overflow-hidden">
-      {/* 1. LEFT SIDEBAR (Dark Navy, Organized Admin Modules + Distinct Role Platforms) */}
-      <aside className="w-64 md:w-72 bg-[#0B132B] text-slate-200 flex flex-col justify-between shrink-0 shadow-2xl border-r border-slate-800/80 select-none">
+      {/* 1. LEFT SIDEBAR (Clean White & Royal Blue, Organized Admin Modules + Distinct Role Platforms) */}
+      <aside className="w-64 md:w-72 bg-white text-slate-800 flex flex-col justify-between shrink-0 shadow-lg border-r border-slate-200/90 select-none">
         <div className="overflow-y-auto scrollbar-thin px-3.5 py-4 space-y-4">
           {/* Logo & Platform Tagline */}
           <div className="px-1.5 flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-extrabold text-base text-white tracking-tight leading-tight truncate">
+              <h1 className="font-extrabold text-base text-slate-900 tracking-tight leading-tight truncate">
                 CampusHelper
               </h1>
-              <p className="text-[10px] text-slate-400 font-medium truncate">
+              <p className="text-[10px] text-slate-500 font-medium truncate">
                 One Platform • Every Campus Need
               </p>
             </div>
           </div>
 
           {/* Admin Role Selector Capsule (Interactive RBAC Switcher) */}
-          <div className="p-3 rounded-2xl bg-[#14203D] border border-slate-700/60 shadow-xs space-y-2">
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/60 border border-blue-100 shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 font-bold text-xs">
+                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 font-bold text-xs shadow-2xs">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-extrabold text-white truncate uppercase tracking-wider">Active Admin Role</p>
-                  <p className="text-[9px] text-sky-300 font-semibold truncate">Role-Based Access Control</p>
+                  <p className="text-[11px] font-extrabold text-slate-900 truncate uppercase tracking-wider">Active Admin Role</p>
+                  <p className="text-[9px] text-blue-600 font-semibold truncate">Role-Based Access Control</p>
                 </div>
               </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-600/30 text-blue-300 font-mono font-bold">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 font-mono font-bold border border-blue-200/70">
                 RBAC
               </span>
             </div>
             <select
               value={currentAdminRole}
               onChange={(e) => setCurrentAdminRole(e.target.value as any)}
-              className="w-full bg-[#0a1122] border border-slate-700 text-white text-xs font-semibold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              className="w-full bg-white border border-slate-200 hover:border-blue-300 text-slate-800 text-xs font-semibold rounded-xl px-2.5 py-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer transition"
             >
               <option value="SUPER_ADMIN">⚡ Super Admin (Full Command)</option>
               <option value="CAMPUS_ADMIN">🏛️ Campus Admin</option>
@@ -1315,12 +1326,12 @@ function AdminPortalContent({
 
           {/* Section 1: 4 CORE OPERATIONAL ROLE PLATFORMS (Elevated to Top of Sidebar) */}
           <div className="space-y-2 pt-1">
-            <div className="px-2 flex items-center justify-between text-[10px] font-extrabold text-sky-400 uppercase tracking-wider">
+            <div className="px-2 flex items-center justify-between text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">
               <div className="flex items-center space-x-1.5">
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Operational Platforms</span>
               </div>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 font-mono font-bold">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-mono font-bold border border-blue-100">
                 4 Hubs
               </span>
             </div>
@@ -1334,22 +1345,22 @@ function AdminPortalContent({
                   <button
                     key={role.id}
                     onClick={() => router.push(role.href)}
-                    className={`p-2.5 rounded-xl border transition flex flex-col justify-between group cursor-pointer shadow-xs text-left ${
+                    className={`p-2.5 rounded-xl border transition flex flex-col justify-between group cursor-pointer shadow-2xs text-left ${
                       role.cardBg
-                    } ${isCurrentTab ? 'ring-2 ring-white/30' : ''}`}
+                    } ${isCurrentTab ? 'ring-2 ring-blue-500 shadow-sm' : ''}`}
                     title={`Open ${role.roleTitle}`}
                   >
                     <div className="flex items-center justify-between w-full mb-1.5">
-                      <div className={`w-7 h-7 rounded-lg ${role.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <div className={`w-7 h-7 rounded-lg ${role.iconBg} flex items-center justify-center shrink-0`}>
                         <Icon className="w-3.5 h-3.5" />
                       </div>
-                      <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-white group-hover:text-white truncate">
+                      <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 truncate">
                         {role.label}
                       </p>
-                      <p className="text-[9px] text-slate-300/80 truncate">
+                      <p className="text-[9px] text-slate-500 truncate">
                         {role.label === 'Warden'
                           ? 'Hostel Welfare'
                           : role.label === 'Service'
@@ -1366,12 +1377,12 @@ function AdminPortalContent({
           </div>
 
           {/* Section 2: ADMIN MANAGER (Scoped by RBAC) */}
-          <div className="space-y-1 pt-2 border-t border-slate-800/70">
+          <div className="space-y-1 pt-2 border-t border-slate-100">
             <div className="px-2 pt-1 pb-1 flex items-center justify-between">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                 Admin Manager
               </p>
-              <span className="text-[9px] text-slate-400 font-mono">
+              <span className="text-[9px] text-slate-400 font-mono font-semibold">
                 {visibleModules.length} Modules
               </span>
             </div>
@@ -1388,8 +1399,8 @@ function AdminPortalContent({
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium transition cursor-pointer ${
                       isActive
-                        ? 'bg-[#1E6BFF] text-white font-bold shadow-md shadow-blue-600/30'
-                        : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                        ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25'
+                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                     }`}
                   >
                     <div className="flex items-center space-x-3 min-w-0">
@@ -1400,13 +1411,13 @@ function AdminPortalContent({
                       {item.badge && (
                         <span
                           className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold truncate max-w-[80px] ${
-                            isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-sky-400'
+                            isActive ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 border border-blue-100'
                           }`}
                         >
                           {item.badge}
                         </span>
                       )}
-                      <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                      <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                     </div>
                   </button>
                 );
@@ -1416,27 +1427,27 @@ function AdminPortalContent({
         </div>
 
         {/* Sidebar Bottom: User Profile Capsule & Logout */}
-        <div className="p-3 border-t border-slate-800/80 bg-[#070D1F] space-y-2">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40">
+        <div className="p-3 border-t border-slate-100 bg-slate-50/70 space-y-2">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <div className="flex items-center space-x-2.5 min-w-0">
               <div className="relative">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
                   {user.name ? user.name.slice(0, 2).toUpperCase() : 'SP'}
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#070D1F]" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-white truncate">{user.name || 'R. Subham Pradhan'}</p>
+                <p className="text-xs font-bold text-slate-900 truncate">{user.name || 'R. Subham Pradhan'}</p>
                 <div className="flex items-center space-x-1.5">
-                  <span className="text-[10px] text-slate-400 truncate">Admin Manager</span>
-                  <span className="text-[9px] text-emerald-400 font-semibold">• Online</span>
+                  <span className="text-[10px] text-slate-500 truncate">Admin Manager</span>
+                  <span className="text-[9px] text-emerald-600 font-semibold">• Online</span>
                 </div>
               </div>
             </div>
 
             <button
               onClick={() => setActiveTab('SETTINGS')}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/50 transition cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               title="Settings"
             >
               <Settings className="w-4 h-4" />
@@ -1445,7 +1456,7 @@ function AdminPortalContent({
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-lg bg-slate-800/60 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 text-xs font-semibold transition cursor-pointer"
+            className="w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-xl bg-white hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 text-slate-600 hover:text-rose-600 text-xs font-semibold transition shadow-2xs cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
