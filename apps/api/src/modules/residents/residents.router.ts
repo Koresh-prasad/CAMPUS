@@ -52,7 +52,9 @@ router.get('/', optionalAuthMiddleware, async (req: Request, res: Response) => {
       course: r.residentProfile?.course,
       year: r.residentProfile?.year,
       kycComplete: r.residentProfile?.kycComplete || false,
-      currentPresence: r.residentProfile?.currentPresence || 'IN_HOSTEL'
+      status: r.status,
+      currentPresence: r.residentProfile?.currentPresence || 'IN_HOSTEL',
+      profileDataJson: (r.residentProfile as any)?.profileDataJson || null
     }));
 
     return res.json(formatted);
@@ -172,7 +174,15 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
         ...(parentName !== undefined ? { parentName } : {}),
         ...(parentPhone !== undefined ? { parentPhone } : {}),
         ...(emergencyContact !== undefined ? { emergencyContact } : {}),
-        ...(idProofNumber !== undefined ? { idProofNumber } : {})
+        ...(idProofNumber !== undefined ? { idProofNumber } : {}),
+        ...((req.body as any).profileDataJson !== undefined
+          ? {
+              profileDataJson:
+                typeof (req.body as any).profileDataJson === 'string'
+                  ? (req.body as any).profileDataJson
+                  : JSON.stringify((req.body as any).profileDataJson)
+            }
+          : {})
       },
       create: {
         userId,
@@ -186,7 +196,15 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
         parentPhone,
         emergencyContact,
         idProofNumber,
-        kycComplete: true
+        kycComplete: true,
+        ...((req.body as any).profileDataJson !== undefined
+          ? {
+              profileDataJson:
+                typeof (req.body as any).profileDataJson === 'string'
+                  ? (req.body as any).profileDataJson
+                  : JSON.stringify((req.body as any).profileDataJson)
+            }
+          : {})
       }
     });
 
@@ -205,6 +223,173 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Update profile error:', error);
     return res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Submit a Profile Correction Request for locked fields
+router.post('/correction-request', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { fieldName, currentValue, requestedValue, reason } = req.body;
+
+    if (!fieldName || !requestedValue) {
+      return res.status(400).json({ error: 'Field name and requested value are required' });
+    }
+
+    const resident = await prisma.residentProfile.findUnique({ where: { userId } });
+    if (!resident) return res.status(404).json({ error: 'Resident profile not found' });
+
+    let currentData: any = {};
+    try {
+      if ((resident as any).profileDataJson) {
+        currentData = JSON.parse((resident as any).profileDataJson);
+      }
+    } catch (e) {}
+
+    const newRequest = {
+      id: `CR-${Date.now().toString().slice(-6)}`,
+      fieldName,
+      currentValue: currentValue || 'N/A',
+      requestedValue,
+      reason: reason || 'Correction requested by student',
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    };
+
+    const existingRequests = currentData.correctionRequests || [];
+    currentData.correctionRequests = [newRequest, ...existingRequests];
+
+    await prisma.residentProfile.update({
+      where: { userId },
+      data: {
+        profileDataJson: JSON.stringify(currentData)
+      } as any
+    });
+
+    return res.json({ success: true, request: newRequest });
+  } catch (error) {
+    console.error('Correction request error:', error);
+    return res.status(500).json({ error: 'Failed to submit correction request' });
+  }
+});
+
+// Admin Review Profile Correction Request
+router.post('/:id/correction-request/:reqId/review', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id, reqId } = req.params;
+    const { status, adminNote } = req.body; // 'APPROVED' | 'REJECTED'
+
+    const resident = await prisma.residentProfile.findFirst({
+      where: { OR: [{ userId: id }, { id }] }
+    });
+    if (!resident) return res.status(404).json({ error: 'Resident not found' });
+
+    let currentData: any = {};
+    try {
+      if ((resident as any).profileDataJson) {
+        currentData = JSON.parse((resident as any).profileDataJson);
+      }
+    } catch (e) {}
+
+    const requests = currentData.correctionRequests || [];
+    const targetReq = requests.find((r: any) => r.id === reqId);
+    if (!targetReq) return res.status(404).json({ error: 'Correction request not found' });
+
+    targetReq.status = status;
+    targetReq.reviewedAt = new Date().toISOString();
+    targetReq.adminNote = adminNote || (status === 'APPROVED' ? 'Approved by Admin' : 'Rejected');
+
+    // If approved, update the actual field
+    const updateData: any = { profileDataJson: JSON.stringify(currentData) };
+    if (status === 'APPROVED') {
+      if (targetReq.fieldName === 'roomNumber') updateData.roomNumber = targetReq.requestedValue;
+      if (targetReq.fieldName === 'blockName') updateData.blockName = targetReq.requestedValue;
+      if (targetReq.fieldName === 'course') updateData.course = targetReq.requestedValue;
+    }
+
+    await prisma.residentProfile.update({
+      where: { id: resident.id },
+      data: updateData
+    });
+
+    return res.json({ success: true, request: targetReq });
+  } catch (error) {
+    console.error('Review correction request error:', error);
+    return res.status(500).json({ error: 'Failed to review correction request' });
+  }
+});
+
+// Report Digital ID Lost / Stolen
+router.post('/digital-id/report-lost', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { reason } = req.body;
+
+    const resident = await prisma.residentProfile.findUnique({ where: { userId } });
+    if (!resident) return res.status(404).json({ error: 'Resident not found' });
+
+    let currentData: any = {};
+    try {
+      if ((resident as any).profileDataJson) {
+        currentData = JSON.parse((resident as any).profileDataJson);
+      }
+    } catch (e) {}
+
+    currentData.digitalId = {
+      ...(currentData.digitalId || {}),
+      cardStatus: 'BLOCKED_LOST',
+      reportedLostAt: new Date().toISOString(),
+      lostReason: reason || 'Reported lost by student'
+    };
+
+    await prisma.residentProfile.update({
+      where: { userId },
+      data: {
+        profileDataJson: JSON.stringify(currentData)
+      } as any
+    });
+
+    return res.json({ success: true, digitalId: currentData.digitalId });
+  } catch (error) {
+    console.error('Report lost ID error:', error);
+    return res.status(500).json({ error: 'Failed to report lost ID' });
+  }
+});
+
+// Request Digital ID Re-issue
+router.post('/digital-id/request-new', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { reason } = req.body;
+
+    const resident = await prisma.residentProfile.findUnique({ where: { userId } });
+    if (!resident) return res.status(404).json({ error: 'Resident not found' });
+
+    let currentData: any = {};
+    try {
+      if ((resident as any).profileDataJson) {
+        currentData = JSON.parse((resident as any).profileDataJson);
+      }
+    } catch (e) {}
+
+    currentData.digitalId = {
+      ...(currentData.digitalId || {}),
+      cardStatus: 'REISSUE_REQUESTED',
+      reissueRequestedAt: new Date().toISOString(),
+      reissueReason: reason || 'Replacement card requested'
+    };
+
+    await prisma.residentProfile.update({
+      where: { userId },
+      data: {
+        profileDataJson: JSON.stringify(currentData)
+      } as any
+    });
+
+    return res.json({ success: true, digitalId: currentData.digitalId });
+  } catch (error) {
+    console.error('Request new ID error:', error);
+    return res.status(500).json({ error: 'Failed to request new ID' });
   }
 });
 

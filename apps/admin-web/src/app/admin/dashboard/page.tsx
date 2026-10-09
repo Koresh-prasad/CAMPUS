@@ -1835,6 +1835,7 @@ function AdminPortalContent({
               onApproveStudent={handleApproveStudent}
               onRejectStudent={handleRejectStudent}
               onRefresh={fetchAdminData}
+              token={token}
             />
           )}
 

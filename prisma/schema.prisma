@@ -111,6 +111,7 @@ model ResidentProfile {
   approvalNote     String?
   currentPresence  String   @default("IN_HOSTEL") // "IN_HOSTEL", "OUT_ON_PASS", "OUT_ON_LEAVE", "OVERDUE"
   lastGateScanAt   DateTime?
+  profileDataJson  String?
 }
 
 model StaffProfile {

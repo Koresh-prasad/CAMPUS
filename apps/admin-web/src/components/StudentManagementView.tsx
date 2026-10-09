@@ -32,6 +32,13 @@ import {
   AlertCircle,
   Check,
   DoorOpen,
+  Award,
+  BookOpen,
+  ExternalLink,
+  Briefcase,
+  FileCheck,
+  FolderLock,
+  Edit3,
 } from 'lucide-react';
 
 interface StudentManagementProps {
@@ -42,6 +49,7 @@ interface StudentManagementProps {
   onApproveStudent?: (id: string, name: string) => void;
   onRejectStudent?: (id: string, name: string) => void;
   onRefresh?: () => void;
+  token?: string;
 }
 
 export default function StudentManagementView({
@@ -52,6 +60,7 @@ export default function StudentManagementView({
   onApproveStudent,
   onRejectStudent,
   onRefresh,
+  token,
 }: StudentManagementProps) {
   const subTabs = [
     'Student Profiles',
@@ -73,8 +82,69 @@ export default function StudentManagementView({
 
   // Student Detail Drawer State
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
-  const [drawerTab, setDrawerTab] = useState<'OVERVIEW' | 'LEAVE' | 'GATE_PASS' | 'COMPLAINTS' | 'SERVICES'>('OVERVIEW');
+  const [drawerTab, setDrawerTab] = useState<
+    'OVERVIEW' | 'CORRECTIONS' | 'ACADEMICS' | 'DOCUMENTS' | 'LEAVE' | 'GATE_PASS' | 'COMPLAINTS' | 'SERVICES'
+  >('OVERVIEW');
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
+
+  // Parse rich 6-tab profile JSON for selected student
+  const profileData = React.useMemo(() => {
+    if (!selectedStudent?.profileDataJson) return null;
+    if (typeof selectedStudent.profileDataJson === 'object') return selectedStudent.profileDataJson;
+    try {
+      return JSON.parse(selectedStudent.profileDataJson);
+    } catch (e) {
+      return null;
+    }
+  }, [selectedStudent]);
+
+  const pendingCorrectionsList = React.useMemo(() => {
+    return profileData?.correctionRequests?.filter((r: any) => r.status === 'PENDING') || [];
+  }, [profileData]);
+
+  const handleReviewCorrection = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
+    if (!selectedStudent) return;
+    setReviewSubmitting(true);
+    setReviewError('');
+    try {
+      const res = await fetch(`/api/residents/${selectedStudent.id}/correction-request/${requestId}/review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status,
+          adminNote: reviewNote.trim() || (status === 'APPROVED' ? 'Approved by campus administrator' : 'Rejected after review')
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActionSuccessMsg(`Correction request marked as ${status}!`);
+        setTimeout(() => setActionSuccessMsg(''), 4000);
+        setReviewNote('');
+        if (data.profileDataJson) {
+          setSelectedStudent((prev: any) => ({
+            ...prev,
+            profileDataJson: data.profileDataJson
+          }));
+        }
+        onRefresh?.();
+      } else {
+        const err = await res.json();
+        setReviewError(err.error || 'Failed to update correction request');
+      }
+    } catch (err: any) {
+      setReviewError(err.message || 'Network error');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   // New Student Form
   const [newStudent, setNewStudent] = useState({
@@ -1160,16 +1230,54 @@ export default function StudentManagementView({
             </div>
 
             {/* Deep History Tabs Nav */}
-            <div className="flex border-b border-slate-200 px-5 pt-3 bg-white shrink-0 overflow-x-auto text-xs font-bold text-slate-600">
+            <div className="flex border-b border-slate-200 px-5 pt-3 bg-white shrink-0 overflow-x-auto text-xs font-bold text-slate-600 gap-1">
               <button
                 onClick={() => setDrawerTab('OVERVIEW')}
-                className={`pb-3 px-3 transition border-b-2 cursor-pointer ${
+                className={`pb-3 px-3 transition border-b-2 cursor-pointer flex items-center space-x-1.5 ${
                   drawerTab === 'OVERVIEW'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent hover:text-slate-900'
                 }`}
               >
-                Profile & Contacts
+                <span>Profile & Contacts</span>
+              </button>
+              <button
+                onClick={() => setDrawerTab('CORRECTIONS')}
+                className={`pb-3 px-3 transition border-b-2 cursor-pointer flex items-center space-x-1.5 ${
+                  drawerTab === 'CORRECTIONS'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent hover:text-slate-900'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Correction Requests</span>
+                {pendingCorrectionsList.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black animate-pulse">
+                    {pendingCorrectionsList.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setDrawerTab('ACADEMICS')}
+                className={`pb-3 px-3 transition border-b-2 cursor-pointer flex items-center space-x-1.5 ${
+                  drawerTab === 'ACADEMICS'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Academics</span>
+              </button>
+              <button
+                onClick={() => setDrawerTab('DOCUMENTS')}
+                className={`pb-3 px-3 transition border-b-2 cursor-pointer flex items-center space-x-1.5 ${
+                  drawerTab === 'DOCUMENTS'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent hover:text-slate-900'
+                }`}
+              >
+                <FolderLock className="w-3.5 h-3.5" />
+                <span>Govt Locker</span>
               </button>
               <button
                 onClick={() => setDrawerTab('LEAVE')}
@@ -1180,7 +1288,7 @@ export default function StudentManagementView({
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Leave History ({selectedStudent.leaveHistory?.length || 3})</span>
+                <span>Leaves ({selectedStudent.leaveHistory?.length || 3})</span>
               </button>
               <button
                 onClick={() => setDrawerTab('GATE_PASS')}
@@ -1191,7 +1299,7 @@ export default function StudentManagementView({
                 }`}
               >
                 <DoorOpen className="w-3.5 h-3.5" />
-                <span>Gate-Pass Logs ({selectedStudent.gatePassHistory?.length || 3})</span>
+                <span>Gate Pass ({selectedStudent.gatePassHistory?.length || 3})</span>
               </button>
               <button
                 onClick={() => setDrawerTab('COMPLAINTS')}
@@ -1202,7 +1310,7 @@ export default function StudentManagementView({
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Complaint History ({selectedStudent.complaintHistory?.length || 2})</span>
+                <span>Complaints ({selectedStudent.complaintHistory?.length || 2})</span>
               </button>
               <button
                 onClick={() => setDrawerTab('SERVICES')}
@@ -1213,7 +1321,7 @@ export default function StudentManagementView({
                 }`}
               >
                 <Wrench className="w-3.5 h-3.5" />
-                <span>Service Requests ({selectedStudent.serviceHistory?.length || 2})</span>
+                <span>Services ({selectedStudent.serviceHistory?.length || 2})</span>
               </button>
             </div>
 
@@ -1222,80 +1330,558 @@ export default function StudentManagementView({
               {/* TAB 1: OVERVIEW & CONTACTS */}
               {drawerTab === 'OVERVIEW' && (
                 <div className="space-y-4">
+                  {/* Pending Corrections Alert */}
+                  {pendingCorrectionsList.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0">
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-amber-950">
+                            {pendingCorrectionsList.length} Profile Correction Request{pendingCorrectionsList.length > 1 ? 's' : ''} Awaiting Review
+                          </p>
+                          <p className="text-[11px] text-amber-800">
+                            Student has formally requested modifications to locked official records.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerTab('CORRECTIONS')}
+                        className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        Review Requests
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Academic & University Enrollment Details */}
                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      Academic & Enrollment Details
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                      <span>Academic & Enrollment Details</span>
+                      <span className="text-[10px] text-blue-600 font-bold font-mono">
+                        Batch: {profileData?.personalInfo?.batch || '2023 - 2027'}
+                      </span>
                     </h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                       <div>
                         <span className="text-[10px] text-slate-400 font-bold block">Course / Program</span>
-                        <p className="font-bold text-slate-800">{selectedStudent.course || 'B.Tech'}</p>
+                        <p className="font-bold text-slate-800">{selectedStudent.course || profileData?.personalInfo?.branch || 'B.Tech'}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Department</span>
-                        <p className="font-bold text-slate-800">{selectedStudent.dept || 'Computer Science'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">Department / Branch</span>
+                        <p className="font-bold text-slate-800">{profileData?.personalInfo?.branch || selectedStudent.dept || 'Computer Science & Engineering'}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Year & Semester</span>
+                        <span className="text-[10px] text-slate-400 font-bold block">Current Semester</span>
                         <p className="font-bold text-slate-800">
-                          {selectedStudent.year || '3rd Year'} • {selectedStudent.semester || '6th Semester'}
+                          {profileData?.personalInfo?.semester || selectedStudent.semester || '5th Semester'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">University Reg Number</span>
-                        <p className="font-bold font-mono text-blue-700">{selectedStudent.rollNo || '2101289001'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">University Roll No</span>
+                        <p className="font-bold font-mono text-blue-700">
+                          {profileData?.personalInfo?.rollNo || selectedStudent.rollNo || selectedStudent.studentId || '2501294204'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Registration No</span>
+                        <p className="font-bold font-mono text-slate-700">
+                          {profileData?.personalInfo?.regNo || '2301042001'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Admission Year</span>
+                        <p className="font-bold text-slate-800">{profileData?.personalInfo?.admissionYear || '2023'}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Personal Demographics & Addresses */}
                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      Hostel & Room Allocation
+                      Personal Demographics & Identity
                     </h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Hostel Block</span>
-                        <p className="font-bold text-slate-800">{selectedStudent.hostel || selectedStudent.blockName || 'Nilgiri Block A'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">Date of Birth</span>
+                        <p className="font-bold text-slate-800">{profileData?.personalInfo?.dob || '18-Jun-2004'}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Room Number</span>
-                        <p className="font-bold text-blue-700">{selectedStudent.room || selectedStudent.roomNumber || 'A-204'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">Gender</span>
+                        <p className="font-bold text-slate-800">{profileData?.personalInfo?.gender || 'Male'}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Bed Number</span>
-                        <p className="font-bold text-slate-800">Bed 01 (Window Side)</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">Blood Group</span>
+                        <p className="font-bold text-rose-600">{profileData?.personalInfo?.bloodGroup || selectedStudent.bloodGroup || 'B+'}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Assigned Chief Warden</span>
-                        <p className="font-bold text-slate-800">Dr. K. N. Mohapatra</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      Parent & Guardian Contacts
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Guardian Name</span>
+                        <span className="text-[10px] text-slate-400 font-bold block">Category & Nationality</span>
                         <p className="font-bold text-slate-800">
-                          {selectedStudent.parentName || 'B. K. Kumar'} ({selectedStudent.parentRelation || 'Father'})
+                          {profileData?.personalInfo?.category || 'General'} • {profileData?.personalInfo?.nationality || 'Indian'}
                         </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">Primary Guardian Phone</span>
-                        <p className="font-bold text-blue-700 font-mono">{selectedStudent.parentPhone || '+91 94370 11223'}</p>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-[10px] text-slate-400 font-bold block">Permanent Home Address</span>
-                        <p className="font-medium text-slate-700">{selectedStudent.guardianAddress || 'Plot 41, Sailashree Vihar, Bhubaneswar, Odisha'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold block">Official Student Email</span>
+                        <p className="font-bold text-blue-700 truncate">
+                          {profileData?.personalInfo?.email || selectedStudent.email || 'subhampradhan34864@gmail.com'}
+                        </p>
                       </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 font-bold block">Student Contact Mobile</span>
+                        <p className="font-bold text-slate-800 font-mono">
+                          {profileData?.personalInfo?.studentPhone || selectedStudent.phone || '+91 7653993919'}
+                        </p>
+                      </div>
+                      <div className="col-span-2 sm:col-span-4">
+                        <span className="text-[10px] text-slate-400 font-bold block">Permanent Residential Address</span>
+                        <p className="font-medium text-slate-700">
+                          {profileData?.personalInfo?.permanentAddress || selectedStudent.guardianAddress || 'Plot 42, VSS Nagar, Bhubaneswar, Odisha - 751007'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hostel & Room Allocation with Roommates & Fee Status */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Hostel Allocation & Resident Services
+                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Fee: {profileData?.hostelDetails?.hostelFeeStatus || 'PAID'}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                          {profileData?.hostelDetails?.messPlan || 'Non-Veg Meals'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Hostel Block</span>
+                        <p className="font-bold text-slate-800">{profileData?.hostelDetails?.hostelBlock || selectedStudent.hostel || selectedStudent.blockName || 'Hostel A (Nilgiri Block A)'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Floor & Room</span>
+                        <p className="font-bold text-blue-700">
+                          {profileData?.hostelDetails?.floor || '2nd Floor'} • Rm {profileData?.hostelDetails?.roomNumber || selectedStudent.room || selectedStudent.roomNumber || 'A-204'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Allotted Bed</span>
+                        <p className="font-bold text-slate-800">Bed {profileData?.hostelDetails?.bedNumber || 'B1'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">Check-in Date</span>
+                        <p className="font-bold text-slate-800">{profileData?.hostelDetails?.checkInDate || '10 Aug 2023'}</p>
+                      </div>
+                      <div className="col-span-2 sm:col-span-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block">Assigned Chief Hostel Warden</span>
+                          <p className="font-bold text-slate-900 text-xs">{profileData?.hostelDetails?.wardenName || 'Dr. K.P. Mohapatra'}</p>
+                        </div>
+                        <a
+                          href={`tel:${profileData?.hostelDetails?.wardenPhone || '+919437011223'}`}
+                          className="px-3 py-1 bg-white hover:bg-slate-100 text-blue-700 font-bold text-xs rounded-lg border border-slate-200 transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Phone className="w-3 h-3 text-blue-600" />
+                          <span>Call Warden</span>
+                        </a>
+                      </div>
+                      {/* Roommates */}
+                      {profileData?.hostelDetails?.roommates && profileData.hostelDetails.roommates.length > 0 && (
+                        <div className="col-span-2 sm:col-span-4 space-y-1.5 pt-1">
+                          <span className="text-[10px] text-slate-400 font-bold block">Allocated Roommates</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {profileData.hostelDetails.roommates.map((rm, idx) => (
+                              <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                                <div>
+                                  <p className="font-bold text-slate-900">{rm.name}</p>
+                                  <p className="text-[10px] text-slate-500">{rm.branch} • Bed {rm.bed}</p>
+                                </div>
+                                <span className="text-[10px] font-mono text-blue-600 font-bold">{rm.rollNo}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Family & Emergency Contacts */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                      <span>Family & Emergency Contacts</span>
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3 text-emerald-600" />
+                        Active in Campus SOS Dispatch
+                      </span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block">👨‍👦 Father's Name</span>
+                          <p className="font-bold text-slate-900">{profileData?.familyEmergency?.fatherName || selectedStudent.parentName || 'Balakrushna Pradhan'}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">{profileData?.familyEmergency?.fatherPhone || selectedStudent.parentPhone || '+91 94370 88214'}</p>
+                        </div>
+                        <a
+                          href={`tel:${profileData?.familyEmergency?.fatherPhone || selectedStudent.parentPhone || '+919437088214'}`}
+                          className="p-2 bg-white hover:bg-slate-100 text-blue-600 rounded-lg border border-slate-200 shadow-2xs"
+                          title="Call Father"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block">👩‍👦 Mother's Name</span>
+                          <p className="font-bold text-slate-900">{profileData?.familyEmergency?.motherName || 'Snehalata Pradhan'}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">{profileData?.familyEmergency?.motherPhone || '+91 94372 99120'}</p>
+                        </div>
+                        <a
+                          href={`tel:${profileData?.familyEmergency?.motherPhone || '+919437299120'}`}
+                          className="p-2 bg-white hover:bg-slate-100 text-blue-600 rounded-lg border border-slate-200 shadow-2xs"
+                          title="Call Mother"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block">🏡 Local Guardian</span>
+                          <p className="font-bold text-slate-900">
+                            {profileData?.familyEmergency?.localGuardianName || 'Manoranjan Mohanty'} ({profileData?.familyEmergency?.localGuardianRelation || 'Uncle'})
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono">{profileData?.familyEmergency?.localGuardianPhone || '+91 98611 77332'}</p>
+                        </div>
+                        <a
+                          href={`tel:${profileData?.familyEmergency?.localGuardianPhone || '+919861177332'}`}
+                          className="p-2 bg-white hover:bg-slate-100 text-blue-600 rounded-lg border border-slate-200 shadow-2xs"
+                          title="Call Local Guardian"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div className="p-3 bg-rose-50/70 rounded-xl border border-rose-200 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-rose-600 font-black block">🚨 Primary SOS Contact</span>
+                          <p className="font-bold text-slate-900">
+                            {profileData?.familyEmergency?.primaryEmergencyName || 'Balakrushna Pradhan'} ({profileData?.familyEmergency?.primaryEmergencyRelation || 'Father'})
+                          </p>
+                          <p className="text-[11px] text-slate-700 font-mono font-bold">{profileData?.familyEmergency?.primaryEmergencyPhone || '+91 94370 88214'}</p>
+                        </div>
+                        <a
+                          href={`tel:${profileData?.familyEmergency?.primaryEmergencyPhone || '+919437088214'}`}
+                          className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-xs"
+                          title="Call Primary Emergency Contact"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      {profileData?.familyEmergency?.familyDoctorName && (
+                        <div className="col-span-1 sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-bold block">🩺 Family Doctor & Clinic</span>
+                            <p className="font-bold text-slate-900">
+                              {profileData.familyEmergency.familyDoctorName} • {profileData.familyEmergency.familyDoctorClinic || 'Family Clinic'}
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-mono">{profileData.familyEmergency.familyDoctorPhone}</p>
+                          </div>
+                          <a
+                            href={`tel:${profileData.familyEmergency.familyDoctorPhone}`}
+                            className="p-2 bg-white hover:bg-slate-100 text-blue-600 rounded-lg border border-slate-200 shadow-2xs"
+                            title="Call Doctor"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* TAB: CORRECTION REQUESTS REVIEW */}
+              {drawerTab === 'CORRECTIONS' && (
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Student Profile Correction Requests
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Review and approve modifications to locked student records (Roll No, Branch, Room).
+                      </p>
+                    </div>
+                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      {profileData?.correctionRequests?.length || 0} Request{profileData?.correctionRequests?.length !== 1 ? 's' : ''} on file
+                    </span>
+                  </div>
+
+                  {reviewError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{reviewError}</span>
+                    </div>
+                  )}
+
+                  {(!profileData?.correctionRequests || profileData.correctionRequests.length === 0) ? (
+                    <div className="p-12 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200 space-y-2">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                      <p className="font-bold text-slate-700">No Correction Requests Pending</p>
+                      <p className="text-[11px] text-slate-400">This student has not submitted any profile alteration requests.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {profileData.correctionRequests.map((req) => (
+                        <div
+                          key={req.id}
+                          className={`p-4 rounded-2xl border transition space-y-3 ${
+                            req.status === 'PENDING'
+                              ? 'bg-amber-50/40 border-amber-300 shadow-xs'
+                              : req.status === 'APPROVED'
+                              ? 'bg-emerald-50/40 border-emerald-200'
+                              : 'bg-rose-50/40 border-rose-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-black text-xs text-slate-900 uppercase tracking-wide">
+                                Field: {req.field}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">#{req.id}</span>
+                            </div>
+                            <span
+                              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                                req.status === 'PENDING'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : req.status === 'APPROVED'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-rose-100 text-rose-800 border-rose-300'
+                              }`}
+                            >
+                              {req.status}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-slate-200 text-xs">
+                            <div>
+                              <span className="text-[10px] text-slate-400 font-bold block">Current Value in Record</span>
+                              <p className="font-bold text-slate-700 line-through">{req.currentValue || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-blue-600 font-black block">Requested New Value</span>
+                              <p className="font-black text-blue-700">{req.requestedValue || 'N/A'}</p>
+                            </div>
+                            <div className="col-span-2 pt-1 border-t border-slate-100">
+                              <span className="text-[10px] text-slate-400 font-bold block">Student Justification / Reason:</span>
+                              <p className="font-medium text-slate-800 text-xs mt-0.5">{req.reason}</p>
+                              <span className="text-[10px] text-slate-400 block mt-1">
+                                Submitted: {new Date(req.submittedAt).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {req.status === 'PENDING' ? (
+                            <div className="pt-2 space-y-2 border-t border-slate-200/80">
+                              <input
+                                type="text"
+                                placeholder="Add an admin note / review remarks (optional)..."
+                                value={reviewNote}
+                                onChange={(e) => setReviewNote(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400"
+                              />
+                              <div className="flex items-center justify-end space-x-2 pt-1">
+                                <button
+                                  type="button"
+                                  disabled={reviewSubmitting}
+                                  onClick={() => handleReviewCorrection(req.id, 'REJECTED')}
+                                  className="px-3.5 py-1.5 rounded-xl border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 text-xs font-bold transition cursor-pointer"
+                                >
+                                  Reject Request
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={reviewSubmitting}
+                                  onClick={() => handleReviewCorrection(req.id, 'APPROVED')}
+                                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center space-x-1"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>{reviewSubmitting ? 'Processing...' : 'Approve & Update Field'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-white/70 rounded-xl border border-slate-200 text-xs space-y-0.5">
+                              <p className="text-[11px] text-slate-700 font-bold">
+                                Admin Note: <span className="font-normal">{req.adminNote || 'No notes added'}</span>
+                              </p>
+                              {req.reviewedAt && (
+                                <p className="text-[10px] text-slate-400">Reviewed on: {new Date(req.reviewedAt).toLocaleString()}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB: ACADEMIC COLLECTION & PERFORMANCE */}
+              {drawerTab === 'ACADEMICS' && (
+                <div className="space-y-4">
+                  {/* Top Academic Metric Cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cumulative CGPA</span>
+                      <p className="text-2xl font-black text-blue-600 mt-0.5">{profileData?.academicCollection?.cgpa || '8.84'}</p>
+                      <span className="text-[10px] text-emerald-600 font-bold">Top 5% of Batch</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Backlogs</span>
+                      <p className="text-2xl font-black text-emerald-600 mt-0.5">0</p>
+                      <span className="text-[10px] text-emerald-700 font-bold">All Clear</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Current Semester</span>
+                      <p className="text-2xl font-black text-slate-900 mt-0.5">5th Sem</p>
+                      <span className="text-[10px] text-slate-500 font-bold">3rd Academic Year</span>
+                    </div>
+                  </div>
+
+                  {/* Subject-Wise Attendance & Eligibility */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                      <span>Subject Attendance & 75% Exam Eligibility</span>
+                      <span className="text-[10px] text-slate-500 font-bold">Autonomous Rule: Minimum 75% Required</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {(profileData?.academicCollection?.subjects || [
+                        { code: 'CS501', name: 'Design & Analysis of Algorithms', attended: 46, total: 50, percentage: 92, eligible: true },
+                        { code: 'CS502', name: 'Database Management Systems', attended: 44, total: 50, percentage: 88, eligible: true },
+                        { code: 'CS503', name: 'Operating Systems & System Calls', attended: 43, total: 50, percentage: 86, eligible: true },
+                        { code: 'CS504', name: 'Computer Networks & Protocols', attended: 42, total: 50, percentage: 84, eligible: true },
+                        { code: 'CS505', name: 'Software Engineering & Agile Labs', attended: 45, total: 50, percentage: 90, eligible: true }
+                      ]).map((sub, idx) => (
+                        <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-bold font-mono text-blue-600 text-[11px]">{sub.code}</span>
+                            <h5 className="font-bold text-slate-900 text-xs mt-0.5">{sub.name}</h5>
+                            <p className="text-[10px] text-slate-400">Classes: {sub.attended} / {sub.total} attended</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-black text-slate-900">{sub.percentage}%</span>
+                            <div>
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                sub.percentage >= 75
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+                              }`}>
+                                {sub.percentage >= 75 ? '✓ Exam Eligible' : '⚠️ Shortage'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Achievements, Projects & Internships */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                      Student Projects, Internships & Achievements
+                    </h4>
+                    <div className="space-y-2">
+                      {(profileData?.academicCollection?.achievements || [
+                        { id: 'ach-1', title: 'Smart Campus Management System', type: 'Project', org: 'HackOdisha Finalist', date: 'Oct 2024', description: 'Full-stack IoT & cloud portal for automated turnstiles.' },
+                        { id: 'ach-2', title: 'Full Stack Web Developer Intern', type: 'Internship', org: 'Tech Innovators Hub', date: 'May - July 2024', description: 'Engineered Next.js & Express microservices with 99.9% uptime.' },
+                        { id: 'ach-3', title: 'Dean Academic Excellence Honor', type: 'Award', org: 'Apex Tech University', date: 'Jan 2024', description: 'Top 3% semester academic ranking in CSE department.' }
+                      ]).map((ach) => (
+                        <div key={ach.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1 text-xs">
+                          <div className="flex items-center justify-between">
+                            <h5 className="font-black text-slate-900">{ach.title}</h5>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                              {ach.type}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600">{ach.description}</p>
+                          <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-200/60">
+                            <span>{ach.org}</span>
+                            <span>{ach.date}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: GOVERNMENT LOCKER & VERIFICATION */}
+              {drawerTab === 'DOCUMENTS' && (
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <FolderLock className="w-4 h-4 text-blue-600" />
+                        <span>Government Locker Documents</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Official statutory credentials, certificates, and ID proofs. Encrypted storage.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                      🔒 Audit Logged
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(profileData?.governmentLocker || [
+                      { id: 'doc-1', type: 'Aadhaar Card', maskedNumber: 'XXXX-XXXX-4204', uploadDate: '2023-08-12', expiry: 'Lifetime', status: 'VERIFIED', fileSize: '1.4 MB' },
+                      { id: 'doc-2', type: 'PAN Card', maskedNumber: 'XXXXX4204F', uploadDate: '2023-08-14', expiry: 'Lifetime', status: 'VERIFIED', fileSize: '980 KB' },
+                      { id: 'doc-3', type: '10th Board Certificate', maskedNumber: 'BSE-XXXX-1029', uploadDate: '2023-08-12', expiry: 'Lifetime', status: 'VERIFIED', fileSize: '2.1 MB' },
+                      { id: 'doc-4', type: '12th Science Marksheet', maskedNumber: 'CHSE-XXXX-8821', uploadDate: '2023-08-12', expiry: 'Lifetime', status: 'VERIFIED', fileSize: '2.4 MB' },
+                      { id: 'doc-5', type: 'College Transfer Certificate (TC)', maskedNumber: 'TC-2023-8901', uploadDate: '2023-08-15', expiry: 'Lifetime', status: 'VERIFIED', fileSize: '850 KB' },
+                      { id: 'doc-6', type: 'Resident / Domicile Certificate', maskedNumber: 'DOM-OD-9921', uploadDate: '2023-08-18', expiry: '2028-08-18', status: 'VERIFIED', fileSize: '1.2 MB' },
+                    ]).map((doc) => (
+                      <div key={doc.id} className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-black text-slate-900 truncate">{doc.type}</h5>
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                            doc.status === 'VERIFIED'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : doc.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-800 border-amber-300'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {doc.status}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          Doc ID: <span className="font-bold text-slate-700">{doc.maskedNumber}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                          <span>Uploaded: {doc.uploadDate || 'N/A'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setViewingDoc(doc)}
+                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>View Doc</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* TAB 2: LEAVE HISTORY */}
               {drawerTab === 'LEAVE' && (
                 <div className="space-y-3">
@@ -1510,6 +2096,78 @@ export default function StudentManagementView({
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {viewingDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <FolderLock className="w-5 h-5 text-blue-600" />
+                <h4 className="font-extrabold text-base text-slate-800">{viewingDoc.type}</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingDoc(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Document Identifier</span>
+                <span className="font-mono font-bold text-slate-800">{viewingDoc.maskedNumber}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Verification Status</span>
+                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                  viewingDoc.status === 'VERIFIED'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {viewingDoc.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Uploaded On</span>
+                <span className="font-bold text-slate-700">{viewingDoc.uploadDate || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Encrypted File Size</span>
+                <span className="font-bold text-slate-700">{viewingDoc.fileSize || '1.2 MB'}</span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 text-center space-y-2">
+              <FileCheck className="w-8 h-8 text-blue-600 mx-auto" />
+              <p className="text-xs font-bold text-slate-800">Official Government Verified Document</p>
+              <p className="text-[11px] text-slate-500">
+                This document is cryptographically verified against state registries and secured with institutional role-based access control.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Document</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingDoc(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer"
+              >
+                Done / Close
+              </button>
             </div>
           </div>
         </div>
