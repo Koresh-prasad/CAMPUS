@@ -646,6 +646,9 @@ async function handleCreatePass(req: Request, res: Response) {
       validFrom,
       validTill,
       studentName,
+      studentEmail,
+      studentId: bodyStudentId,
+      residentId: bodyResidentId,
       roomNumber,
       blockName,
       guardianPhone,
@@ -657,13 +660,45 @@ async function handleCreatePass(req: Request, res: Response) {
       clientRequestId,
     } = req.body;
 
-    let residentId = req.user?.id;
+    let residentId = req.user?.id || bodyResidentId;
     let resident = residentId
       ? await prisma.user.findUnique({
           where: { id: residentId },
           include: { residentProfile: true },
         })
       : null;
+
+    if (!resident && studentEmail) {
+      resident = await prisma.user.findUnique({
+        where: { email: studentEmail },
+        include: { residentProfile: true },
+      });
+      if (resident) residentId = resident.id;
+    }
+
+    if (!resident && bodyStudentId) {
+      const foundProfile = await prisma.residentProfile.findFirst({
+        where: { studentId: String(bodyStudentId) },
+        include: { user: true },
+      });
+      if (foundProfile) {
+        resident = foundProfile.user
+          ? await prisma.user.findUnique({
+              where: { id: foundProfile.userId },
+              include: { residentProfile: true },
+            })
+          : null;
+        if (resident) residentId = resident.id;
+      }
+    }
+
+    if (!resident && studentName) {
+      resident = await prisma.user.findFirst({
+        where: { name: studentName, role: 'STUDENT' },
+        include: { residentProfile: true },
+      });
+      if (resident) residentId = resident.id;
+    }
 
     if (!resident) {
       resident = await prisma.user.findFirst({
@@ -815,7 +850,11 @@ router.post('/:id/approve', optionalAuthMiddleware, async (req: Request, res: Re
         wardenNotes: notes || undefined,
         historyJson: JSON.stringify(history),
       },
-      include: { resident: true },
+      include: {
+        resident: {
+          include: { residentProfile: true },
+        },
+      },
     });
 
     broadcastPassUpdate({
@@ -824,7 +863,9 @@ router.post('/:id/approve', optionalAuthMiddleware, async (req: Request, res: Re
       id: pass.id,
       passNumber: pass.passNumber,
       residentId: pass.residentId,
+      studentId: pass.resident?.residentProfile?.studentId,
       studentName: pass.resident?.name,
+      studentEmail: pass.resident?.email,
       status: 'APPROVED',
       passType: pass.passType,
       destination: pass.destination,

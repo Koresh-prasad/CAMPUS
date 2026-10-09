@@ -131,6 +131,9 @@ export default function StudentGatePassApplyModal({
       reason: reason.trim(),
       guardianPhone,
       studentName: studentProfile?.name || 'Student Resident',
+      studentEmail: studentProfile?.email,
+      residentId: studentProfile?.id || studentProfile?.userId,
+      studentId: studentProfile?.studentId || studentProfile?.rollNo,
       roomNumber: studentProfile?.roomNumber || 'A-204',
       blockName: studentProfile?.blockName || 'Nilgiri (Block A)',
       validFrom: new Date(`${outDate}T${outTime}:00`).toISOString(),
@@ -153,9 +156,13 @@ export default function StudentGatePassApplyModal({
         return;
       }
 
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('shms_token') : null;
       const res = await fetch('/api/passes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 

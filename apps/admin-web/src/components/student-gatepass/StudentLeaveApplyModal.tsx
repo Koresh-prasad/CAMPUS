@@ -99,6 +99,9 @@ export default function StudentLeaveApplyModal({
       destination: destination.trim(),
       reason: `${reason.trim()}${isVacatingRoom ? ' [TEMPORARY ROOM VACATION REQUESTED]' : ''}`,
       studentName: studentProfile?.name || 'Student Resident',
+      studentEmail: studentProfile?.email,
+      residentId: studentProfile?.id || studentProfile?.userId,
+      studentId: studentProfile?.studentId || studentProfile?.rollNo,
       roomNumber: studentProfile?.roomNumber || 'A-204',
       blockName: studentProfile?.blockName || 'Nilgiri (Block A)',
       validFrom: new Date(`${fromDate}T08:00:00`).toISOString(),
@@ -107,9 +110,23 @@ export default function StudentLeaveApplyModal({
     };
 
     try {
+      if (!navigator.onLine) {
+        const queue = JSON.parse(localStorage.getItem('shms_pending_pass_queue') || '[]');
+        queue.push(payload);
+        localStorage.setItem('shms_pending_pass_queue', JSON.stringify(queue));
+        alert('Offline: Leave application saved in device queue and will submit once online!');
+        onSuccess();
+        onClose();
+        return;
+      }
+
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('shms_token') : null;
       const res = await fetch('/api/passes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -122,7 +139,13 @@ export default function StudentLeaveApplyModal({
         alert(data.error || 'Failed to submit leave');
       }
     } catch {
-      alert('Network error connecting to hostel office.');
+      // Network drop fallback
+      const queue = JSON.parse(localStorage.getItem('shms_pending_pass_queue') || '[]');
+      queue.push(payload);
+      localStorage.setItem('shms_pending_pass_queue', JSON.stringify(queue));
+      alert('Network error: Request safely stored in device offline queue!');
+      onSuccess();
+      onClose();
     } finally {
       setSubmitting(false);
     }

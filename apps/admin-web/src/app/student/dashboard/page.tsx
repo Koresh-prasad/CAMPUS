@@ -34,6 +34,7 @@ import {
   Zap,
   Droplets,
   Wifi,
+  WifiOff,
   Sparkles,
   HelpCircle,
   Building,
@@ -2049,6 +2050,7 @@ function StudentPortalContent({
   const [copiedContactPhone, setCopiedContactPhone] = useState<string | null>(null);
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
   const [contactsCategoryFilter, setContactsCategoryFilter] = useState('ALL');
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
     let timer: any;
@@ -2758,32 +2760,69 @@ function StudentPortalContent({
         fetch(`${API_BASE}/campus-map`).catch(() => null),
       ]);
 
+      const cachedPayload: any = {};
+
       if (pRes && pRes.ok) {
         const pData = await pRes.json();
-        setPasses(pData.passes || pData || []);
+        const incomingPasses = pData.passes || pData || [];
+        setPasses(incomingPasses);
+        cachedPayload.passes = incomingPasses;
       }
       if (cRes && cRes.ok) {
         const cData = await cRes.json();
-        setComplaints(cData.complaints || cData || []);
+        const incomingComplaints = cData.complaints || cData || [];
+        setComplaints(incomingComplaints);
+        cachedPayload.complaints = incomingComplaints;
       }
       if (nRes && nRes.ok) {
         const nData = await nRes.json();
-        setNotices(nData.notices || nData || []);
+        const incomingNotices = nData.notices || nData || [];
+        setNotices(incomingNotices);
+        cachedPayload.notices = incomingNotices;
       }
       if (mRes && mRes.ok) {
         const mData = await mRes.json();
-        setMenuData(mData.today || mData);
+        const incomingMenu = mData.today || mData;
+        setMenuData(incomingMenu);
+        cachedPayload.menuData = incomingMenu;
       }
       if (gRes && gRes.ok) {
         const gData = await gRes.json();
-        setGalleryItems(gData.items || gData || []);
+        const incomingGallery = gData.items || gData || [];
+        setGalleryItems(incomingGallery);
+        cachedPayload.galleryItems = incomingGallery;
       }
       if (mapRes && mapRes.ok) {
         const mapData = await mapRes.json();
-        setCampusMapData(mapData.data || mapData);
+        const incomingMap = mapData.data || mapData;
+        setCampusMapData(incomingMap);
+        cachedPayload.campusMapData = incomingMap;
+      }
+
+      // Persist in localStorage for instant offline access
+      if (typeof window !== 'undefined' && Object.keys(cachedPayload).length > 0) {
+        try {
+          const prev = JSON.parse(localStorage.getItem('shms_cached_student_data') || '{}');
+          localStorage.setItem('shms_cached_student_data', JSON.stringify({ ...prev, ...cachedPayload }));
+        } catch (_) {}
       }
     } catch (e) {
-      console.warn('Student portal fetch error:', e);
+      console.warn('Student portal fetch error (offline fallback applied):', e);
+      // Restore from offline cache if network fails
+      if (typeof window !== 'undefined') {
+        try {
+          const rawCached = localStorage.getItem('shms_cached_student_data');
+          if (rawCached) {
+            const cached = JSON.parse(rawCached);
+            if (cached.passes) setPasses(cached.passes);
+            if (cached.complaints) setComplaints(cached.complaints);
+            if (cached.notices) setNotices(cached.notices);
+            if (cached.menuData) setMenuData(cached.menuData);
+            if (cached.galleryItems) setGalleryItems(cached.galleryItems);
+            if (cached.campusMapData) setCampusMapData(cached.campusMapData);
+          }
+        } catch (_) {}
+      }
     } finally {
       setLoadingData(false);
     }
@@ -2791,6 +2830,44 @@ function StudentPortalContent({
 
   useEffect(() => {
     fetchStudentData();
+
+    // Online & Offline Network State Tracking & Auto-Sync
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+
+      const handleOnline = () => {
+        setIsOnline(true);
+        fetchStudentData();
+        // Sync any offline queued requests
+        try {
+          const queueRaw = localStorage.getItem('shms_pending_pass_queue');
+          if (queueRaw) {
+            const queue = JSON.parse(queueRaw);
+            if (Array.isArray(queue) && queue.length > 0) {
+              for (const item of queue) {
+                fetch('/api/passes', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                  },
+                  body: JSON.stringify(item),
+                }).catch(() => {});
+              }
+              localStorage.removeItem('shms_pending_pass_queue');
+              setTimeout(() => fetchStudentData(), 1000);
+            }
+          }
+        } catch (_) {}
+      };
+
+      const handleOffline = () => {
+        setIsOnline(false);
+      };
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+    }
 
     // Socket.io for live updates from admin uploads & actions
     const socket = io(process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000');
@@ -3459,6 +3536,13 @@ function StudentPortalContent({
           </div>
 
           <div className="flex items-center space-x-2.5 shrink-0">
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-800 px-3 py-1 rounded-full font-bold border border-amber-300 shadow-xs" title="You are working offline. Cached data is available and actions will sync when reconnected.">
+                <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                <span>Offline Mode (Cached)</span>
+              </span>
+            )}
+
             {submitSuccess && (
               <span className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-bold border border-emerald-200 animate-pulse">
                 ✓ {submitSuccess}
@@ -3975,6 +4059,9 @@ function StudentPortalContent({
           {activeTab === 'LEAVE_GATE_PASS' && (
             <StudentHostelLeaveGatePassView
               studentProfile={{
+                id: user?.id,
+                email: user?.email,
+                studentId: user?.residentProfile?.studentId || user?.studentId || 'REC-STU-01',
                 name: effectiveStudentName,
                 roomNumber: effectiveRoom,
                 blockName: effectiveHostel,
