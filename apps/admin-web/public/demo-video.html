@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Helper - 3 to 5 Min Hindi Demo Video Simulator</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.05); }
+    }
+    .pulse-dot {
+      animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    .scanline-effect {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), transparent);
+      animation: scanline 4s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans flex flex-col items-center">
+
+  <!-- Header Banner -->
+  <header class="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+    <div class="flex items-center space-x-3">
+      <div class="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
+        🎓
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl md:text-2xl font-black text-white tracking-tight">Campus Helper Demo Video</h1>
+          <span class="bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-white pulse-dot"></span> LIVE REC
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">3-5 Min Automated Hindi Voiceover & Visual Interactive Player for Hackathon</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs">
+      <span class="text-slate-400">Windows Screen Record:</span>
+      <kbd class="px-2 py-1 bg-slate-800 text-sky-300 font-mono text-[11px] rounded border border-slate-700 font-bold shadow-sm">Win + Alt + R</kbd>
+    </div>
+  </header>
+
+  <!-- Main Player Canvas Container -->
+  <main class="w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+
+    <!-- Top Screen Status Bar -->
+    <div class="bg-slate-950/90 px-6 py-3 border-b border-slate-800 flex items-center justify-between text-xs">
+      <div class="flex items-center space-x-3">
+        <span class="font-bold text-sky-400 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          Scene <span id="sceneNumber">1</span>/5: <span id="sceneTitle" class="text-white">Introduction & Raajdhani Engineering College</span>
+        </span>
+      </div>
+      <div class="flex items-center space-x-4 text-slate-400">
+        <span id="currentTimeDisplay" class="font-mono text-white font-semibold">00:00</span>
+        <span>/</span>
+        <span class="font-mono">04:00</span>
+        <button id="voiceLangBtn" class="bg-slate-800 hover:bg-slate-700 text-sky-300 px-2.5 py-1 rounded-md text-[11px] font-medium border border-slate-700 transition">
+          🔊 Hindi Audio: ON
+        </button>
+      </div>
+    </div>
+
+    <!-- Video Stage Simulation -->
+    <div class="relative w-full aspect-video bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/80 p-4 md:p-6 flex flex-col justify-between overflow-hidden select-none" id="stageContainer">
+      <div class="scanline-effect"></div>
+
+      <!-- Watermark Brand -->
+      <div class="absolute top-4 right-4 z-20 flex items-center space-x-2 bg-slate-950/70 backdrop-blur px-3 py-1.5 rounded-xl border border-white/10 text-xs">
+        <span class="text-amber-400 font-bold">Raajdhani Engineering College (Autonomous)</span>
+        <span class="text-slate-500">|</span>
+        <span class="text-sky-400 font-semibold">Hackathon 2025</span>
+      </div>
+
+      <!-- Dynamic Visual Content Stage -->
+      <div class="w-full flex-1 flex items-center justify-center relative z-10 my-2" id="sceneVisualStage">
+        <!-- Injected via JavaScript for each scene -->
+      </div>
+
+      <!-- Synchronized Subtitle & Narration Bar -->
+      <div class="relative z-20 w-full bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 shadow-xl flex items-start space-x-3.5">
+        <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5 border border-sky-400/30">
+          🎙️
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-sky-400 mb-1">
+            <span>HINDI VOICEOVER (हिंदी व्याख्या)</span>
+            <span id="readingTimeRemaining" class="text-slate-400">Auto-Narrating</span>
+          </div>
+          <p id="subtitlesText" class="text-sm md:text-base text-slate-100 font-medium leading-relaxed">
+            नमस्ते जजेस और फ्रेंड्स! आज हम पेश कर रहे हैं "Campus Helper" - स्मार्ट हॉस्टल और कैंपस मैनेजमेंट इकोसिस्टम Raajdhani Engineering College (Autonomous) के लिए।
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Player Controls -->
+    <div class="bg-slate-950 px-6 py-4 border-t border-slate-800 flex flex-col gap-3">
+      
+      <!-- Timeline Scrubber -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-mono text-slate-400" id="scrubberCurrent">00:00</span>
+        <div class="flex-1 relative cursor-pointer py-2" id="timelineTrack">
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden relative">
+            <div id="timelineProgress" class="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+          <!-- Chapter markers -->
+          <div class="absolute inset-x-0 top-2 h-2 flex justify-between pointer-events-none px-1">
+            <span class="w-1.5 h-2 bg-slate-600 rounded-full" title="00:00 Intro"></span>
+            <span class="w-1.5 h-2 bg-slate-600 rounded-full" title="00:48 Profile & ID"></span>
+            <span class="w-1.5 h-2 bg-slate-600 rounded-full" title="01:36 Live Gate Pass"></span>
+            <span class="w-1.5 h-2 bg-slate-600 rounded-full" title="02:24 Offline Resilience"></span>
+            <span class="w-1.5 h-2 bg-slate-600 rounded-full" title="03:12 SOS & Turnstile"></span>
+          </div>
+        </div>
+        <span class="text-xs font-mono text-slate-400">04:00</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center space-x-2">
+          <button id="prevBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs flex items-center gap-1 font-semibold">
+            ⏮️ पिछला सीन
+          </button>
+          
+          <button id="playPauseBtn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/25 transition font-bold text-xs flex items-center gap-2">
+            <span id="playIcon">▶️</span> <span id="playText">वीडियो प्ले करें</span>
+          </button>
+
+          <button id="nextBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs flex items-center gap-1 font-semibold">
+            अगला सीन ⏭️
+          </button>
+
+          <button id="restartBtn" class="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition text-xs flex items-center gap-1">
+            🔄 रीस्टार्ट
+          </button>
+        </div>
+
+        <!-- Chapters Selector -->
+        <div class="flex items-center gap-1 overflow-x-auto text-xs py-1">
+          <button onclick="jumpToScene(0)" class="chapter-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium">1. Intro</button>
+          <button onclick="jumpToScene(1)" class="chapter-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium">2. ID & Profile</button>
+          <button onclick="jumpToScene(2)" class="chapter-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium">3. Gate Pass & Sound</button>
+          <button onclick="jumpToScene(3)" class="chapter-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium">4. Offline Mode</button>
+          <button onclick="jumpToScene(4)" class="chapter-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium">5. QR & Conclusion</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Complete Script & Recording Guide Card -->
+  <section class="w-full max-w-5xl mt-8 bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+          📄
+        </div>
+        <h2 class="text-lg font-bold text-white">Full Video Recording Script in Hindi (3-5 Minutes)</h2>
+      </div>
+      <span class="text-xs text-slate-400">Live Website: campus-six-gold.vercel.app</span>
+    </div>
+
+    <div class="space-y-6 text-sm text-slate-300 leading-relaxed">
+      
+      <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+        <h3 class="font-bold text-sky-400 text-xs uppercase tracking-wider mb-1">Scene 1 (0:00 - 0:45) • समस्या और परिचय</h3>
+        <p class="text-slate-200 font-medium mb-1.5">
+          "नमस्ते जजेस! पारंपरिक हॉस्टल्स में गेट पास के लिए वॉर्डन के कमरे के चक्कर लगाना, रजिस्टर पर लंबी लाइनें और इंटरनेट न होने पर पूरा सिस्टम ठप हो जाना एक आम समस्या है। इस समस्या को जड़ से मिटाने के लिए हमने बनाया है <strong>Campus Helper</strong> - Raajdhani Engineering College (Autonomous) का नेक्स्ट-जेनरेशन स्मार्ट हॉस्टल इकोसिस्टम। इसमें स्टूडेंट्स और कॉलेज एडमिनिस्ट्रेशन दोनों के लिए रियल-टाइम, सिक्योर और ऑफलाइन-रेडी सोल्यूशन है।"
+        </p>
+        <span class="text-[12px] text-amber-400/90 italic">👉 Screen Action: Landing page दिखाएं, Role selection (Student vs Admin Manager) दिखाएं।</span>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+        <h3 class="font-bold text-sky-400 text-xs uppercase tracking-wider mb-1">Scene 2 (0:45 - 1:30) • डिजिटल आईडी कार्ड और कस्टमाइज़ेबल प्रोफाइल</h3>
+        <p class="text-slate-200 font-medium mb-1.5">
+          "स्टूडेंट डैशबोर्ड में 'My Profile' में स्टूडेंट अपनी सभी पर्सनल और इमरजेंसी डिटेल्स अपडेट कर सकता है। साथ ही अपने फोन की गैलरी से डायरेक्ट अपनी फोटो अपलोड कर सकता है, जो क्लाइंट-साइड कैनवास कम्प्रेशन तकनीक से बिना सिस्टम को भारी किए तुरंत स्टोर हो जाती है। यहां स्टूडेंट का डिजिटल आईडी कार्ड <strong>'Raajdhani Engineering College (Autonomus)'</strong> की ऑफिशियल ब्रांडिंग, बारकोड और सिक्योरिटी होलोग्राम के साथ एक्टिव रहता है।"
+        </p>
+        <span class="text-[12px] text-amber-400/90 italic">👉 Screen Action: Profile Tab खोलें, Photo Upload करके दिखाएं और Digital ID Card का यूनिक फ्लिप/व्यू दिखाएं।</span>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+        <h3 class="font-bold text-sky-400 text-xs uppercase tracking-wider mb-1">Scene 3 (1:30 - 2:30) • लाइव गेट पास और ऑडियो ट्यून अप्रूवल</h3>
+        <p class="text-slate-200 font-medium mb-1.5">
+          "अब आता है हमारा सबसे इम्प्रेसिव फीचर! जब भी कोई स्टूडेंट आउटिंग या लीव के लिए गेट पास अप्लाई करता है, तो एडमिन/वॉर्डन के पोर्टल पर तुरंत एक अलर्ट ट्यून बजती है और पास स्क्रीन पर लाइव रिफ्लेक्ट होता है। जैसे ही वॉर्डन 1-क्लिक में पास अप्रूव करता है, स्टूडेंट के फोन पर एक सेलिब्रेटरी ट्यून बजती है और स्क्रीन पर टर्नस्टाइल गेट सिक्योरिटी के लिए डायनामिक <strong>QR Code</strong> जनरेट हो जाता है!"
+        </p>
+        <span class="text-[12px] text-amber-400/90 italic">👉 Screen Action: स्टूडेंट से पास अप्लाई करें (Admin chime सुनाएं), Admin से अप्रूव करें (Student celebration fanfare सुनाएं और QR कोड दिखाएं)।</span>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+        <h3 class="font-bold text-sky-400 text-xs uppercase tracking-wider mb-1">Scene 4 (2:30 - 3:30) • ऑफलाइन रेजिलिएंस और लाइव डिटेक्शन</h3>
+        <p class="text-slate-200 font-medium mb-1.5">
+          "अगर हॉस्टल या गेट पर वाई-फाई चला जाए या इंटरनेट बंद हो जाए, तो हमारा सिस्टम फेल नहीं होता! हमारे रियल-टाइम नेटवर्क डिटेक्टर से हेडर पर तुरंत '🔴 Offline (Cached)' स्टेटस दिखाई देता है। बैकग्राउंड सर्विस वर्कर और लोकल कैशिंग के कारण स्टूडेंट का डिजिटल आईडी कार्ड, मेस मेनू और कॉन्टैक्ट्स बिना इंटरनेट के भी खुलते हैं। और अगर स्टूडेंट ऑफलाइन में भी गेट पास अप्लाई करता है, तो वह क्रैश होने के बजाय 'Offline Queue' में सुरक्षित सेव हो जाता है और इंटरनेट आते ही ऑटो-सिंक हो जाता है!"
+        </p>
+        <span class="text-[12px] text-amber-400/90 italic">👉 Screen Action: Wi-Fi बंद करके '🔴 Offline' बैज दिखाएं, ID card व Mess menu खोलें, फिर Wi-Fi ऑन करके '🟢 Online' दिखाएं।</span>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+        <h3 class="font-bold text-sky-400 text-xs uppercase tracking-wider mb-1">Scene 5 (3:30 - 4:00) • मेस टोकन, इमरजेंसी एसओएस और निष्कर्ष</h3>
+        <p class="text-slate-200 font-medium mb-1.5">
+          "इसके अलावा सिस्टम में डेली मेस टोकन्स, ग्रीवेंस ट्रैकिंग, 1-टैप इमरजेंसी एसओएस और 256-बिट एन्क्रिप्शन मौजूद है। Vercel पर हमारा प्लेटफॉर्म 24x7 परमानेंटली लाइव है। Campus Helper हॉस्टल लाइफ को पेपरलेस, हाई-टेक और सुपर-सेफ बनाता है। धन्यवाद!"
+        </p>
+        <span class="text-[12px] text-amber-400/90 italic">👉 Screen Action: 1-Tap SOS, Mess tokens दिखाएं और लाइव URL campus-six-gold.vercel.app पर खत्म करें।</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Audio Synthesizer & Video Engine JS -->
+  <script>
+    // Audio synthesizer for Web Audio chimes
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playAdminChime() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.001, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.2, now + i * 0.08 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.38);
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    function playStudentFanfare() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        const notes = [587.33, 739.99, 880.00, 1174.66, 1479.98];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + i * 0.09);
+          gain.gain.setValueAtTime(0.001, now + i * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.25, now + i * 0.09 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.09);
+          osc.stop(now + i * 0.09 + 0.5);
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    // Scenes configuration
+    const SCENES = [
+      {
+        id: 1,
+        title: "Introduction & Raajdhani Engineering College Ecosystem",
+        duration: 48, // seconds
+        subtitles: "नमस्ते जजेस और फ्रेंड्स! आज हम पेश कर रहे हैं 'Campus Helper' - स्मार्ट हॉस्टल मैनेजमेंट इकोसिस्टम Raajdhani Engineering College (Autonomous) के लिए। यह हॉस्टल के पेपर-आधारित गेट पास, अटेंडेंस और मेस को 100% डिजिटल, सिक्योर और रियल-टाइम बनाता है।",
+        renderVisual: () => `
+          <div class="w-full max-w-2xl bg-slate-900/90 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row items-center gap-6 animate-fadeIn">
+            <div class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center text-4xl shadow-lg shadow-blue-500/30">
+              🏛️
+            </div>
+            <div class="flex-1 text-center md:text-left">
+              <span class="bg-blue-500/20 text-sky-400 text-xs px-2.5 py-1 rounded-full font-bold uppercase border border-blue-400/30">Hackathon Ready Platform</span>
+              <h2 class="text-2xl font-black text-white mt-1.5">Raajdhani Engineering College</h2>
+              <p class="text-xs text-amber-300 font-semibold tracking-wide">(Autonomous Institution)</p>
+              <div class="grid grid-cols-2 gap-3 mt-4 text-left">
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                  <div class="text-[11px] text-slate-400">Student Portal</div>
+                  <div class="text-xs font-bold text-sky-400">19 Integrated Modules</div>
+                </div>
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                  <div class="text-[11px] text-slate-400">Admin Manager</div>
+                  <div class="text-xs font-bold text-purple-400">Turnstile & 1-Click Action</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 2,
+        title: "Student Profile, Photo Upload & Digital ID Card",
+        duration: 48,
+        subtitles: "स्टूडेंट डैशबोर्ड में 'My Profile' के अंदर पर्सनल और इमरजेंसी इन्फो पूरी तरह एडिटेबल है। स्टूडेंट अपने फोन की गैलरी से डायरेक्ट अपनी फोटो अपलोड कर सकता है, जो क्लाइंट-साइड कैनवास कम्प्रेशन से तुरंत लोड होती है। यहां डिजिटल आईडी कार्ड 'Raajdhani Engineering College (Autonomus)' की ब्रांडिंग के साथ हमेशा तैयार रहता है।",
+        renderVisual: () => `
+          <div class="w-full max-w-2xl flex flex-col md:flex-row items-center justify-center gap-6">
+            <!-- Digital ID Card Mockup -->
+            <div class="w-72 bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-sky-400/50 rounded-2xl p-4 shadow-2xl relative overflow-hidden">
+              <div class="text-center pb-2 border-b border-slate-800">
+                <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Raajdhani Engineering College (Autonomus)</p>
+                <p class="text-[9px] text-slate-400">STUDENT RESIDENT ID CARD</p>
+              </div>
+              <div class="flex items-center gap-3 my-3">
+                <div class="w-14 h-14 rounded-xl bg-blue-600/30 border border-sky-400 flex items-center justify-center text-2xl overflow-hidden">
+                  👨‍🎓
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">Rahul Sharma</h4>
+                  <p class="text-[10px] text-slate-400">B.Tech CSE • 3rd Year</p>
+                  <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">REC2024CS089</span>
+                </div>
+              </div>
+              <div class="bg-slate-950/90 p-2 rounded-lg text-[10px] text-slate-300 space-y-0.5">
+                <div class="flex justify-between"><span>Hostel Block:</span><b class="text-white">Aryabhata C-204</b></div>
+                <div class="flex justify-between"><span>Emergency:</span><b class="text-white">+91 98765 43210</b></div>
+              </div>
+              <div class="mt-2 text-center text-[10px] font-mono text-sky-400">|||||| | |||| ||| |||||||</div>
+            </div>
+            <!-- Profile Features Checklist -->
+            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl text-xs space-y-2 w-64">
+              <div class="font-bold text-sky-400 mb-1">✨ Profile Capabilities:</div>
+              <div class="flex items-center gap-2 text-slate-200"><span>✅</span> Personal & Family Info Edit</div>
+              <div class="flex items-center gap-2 text-slate-200"><span>✅</span> Direct Device Photo Upload</div>
+              <div class="flex items-center gap-2 text-slate-200"><span>✅</span> Canvas Image Compression</div>
+              <div class="flex items-center gap-2 text-slate-200"><span>✅</span> Interactive Avatar Picker</div>
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 3,
+        title: "Live Gate Pass, Alert Chimes & Instant Turnstile QR",
+        duration: 48,
+        subtitles: "जैसे ही स्टूडेंट आउटिंग पास अप्लाई करता है, एडमिन पोर्टल पर एक अलर्ट ट्यून बजती है! वॉर्डन जैसे ही 'Approve' बटन दबाता है, स्टूडेंट के फोन पर सेलिब्रेशन ट्यून बजती है और टर्नस्टाइल गेट सिक्योरिटी के लिए डायनामिक QR कोड तुरंत अनलॉक हो जाता है!",
+        onEnter: () => {
+          setTimeout(() => { playAdminChime(); }, 800);
+          setTimeout(() => { playStudentFanfare(); }, 3200);
+        },
+        renderVisual: () => `
+          <div class="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Student Side -->
+            <div class="bg-slate-950/80 border border-blue-500/40 rounded-2xl p-4 flex flex-col justify-between">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span class="text-xs font-bold text-sky-400">Student Portal</span>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">APPROVED 🎉</span>
+              </div>
+              <div class="my-3 text-center">
+                <div class="w-20 h-20 mx-auto bg-white p-1 rounded-xl shadow-lg flex items-center justify-center">
+                  <div class="text-2xl font-mono text-slate-900">⬛⬜⬛<br>⬜⬛⬜<br>⬛⬜⬛</div>
+                </div>
+                <p class="text-[11px] font-bold text-white mt-2">Turnstile Pass: #GP-8831</p>
+                <p class="text-[10px] text-slate-400">Valid till: Today 09:30 PM</p>
+              </div>
+              <button onclick="playStudentFanfare()" class="w-full py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-sky-300 text-[11px] rounded-lg border border-sky-400/30 transition">
+                🔊 Re-play Student Celebration Chime
+              </button>
+            </div>
+            <!-- Admin Side -->
+            <div class="bg-slate-950/80 border border-purple-500/40 rounded-2xl p-4 flex flex-col justify-between">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span class="text-xs font-bold text-purple-400">Admin / Warden Desk</span>
+                <span class="text-[10px] bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full">REAL-TIME SYNC</span>
+              </div>
+              <div class="my-3 space-y-2">
+                <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                  <div class="flex justify-between text-[11px]">
+                    <b class="text-white">Rahul Sharma (REC2024)</b>
+                    <span class="text-amber-400">City Outing</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mt-1">Book market / Academic supplies</p>
+                  <div class="mt-2 flex gap-2">
+                    <span class="flex-1 text-center py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Approved ✓</span>
+                  </div>
+                </div>
+              </div>
+              <button onclick="playAdminChime()" class="w-full py-1.5 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-[11px] rounded-lg border border-purple-400/30 transition">
+                🔊 Re-play Admin Alert Chime
+              </button>
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 4,
+        title: "Real-time Offline/Online Detection & PWA Resilience",
+        duration: 48,
+        subtitles: "अगर हॉस्टल में वाई-फाई कट जाए, तो हमारा रियल-टाइम डिटेक्टर तुरंत '🔴 Offline (Cached)' स्टेटस दिखाता है। बैकग्राउंड सर्विस वर्कर की मदद से स्टूडेंट का आईडी कार्ड, मेस मेनू और नोटिस बिना इंटरनेट के भी खुलते हैं, और पास अप्लाई करने पर वह 'Offline Queue' में सुरक्षित सेव रहता है!",
+        renderVisual: () => `
+          <div class="w-full max-w-2xl bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400 font-semibold">Simulated Network Status:</span>
+                <span class="bg-red-500/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 pulse-dot"></span> 🔴 Offline (Cached Mode)
+                </span>
+              </div>
+              <span class="text-[11px] text-slate-400">Service Worker Active</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center text-xs">
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div class="text-2xl mb-1">💳</div>
+                <b class="text-white">Digital ID Card</b>
+                <p class="text-[10px] text-emerald-400 mt-0.5">Loads Offline</p>
+              </div>
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div class="text-2xl mb-1">🍲</div>
+                <b class="text-white">Mess & Dining</b>
+                <p class="text-[10px] text-emerald-400 mt-0.5">Cached Menu</p>
+              </div>
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div class="text-2xl mb-1">⏳</div>
+                <b class="text-white">Offline Pass Queue</b>
+                <p class="text-[10px] text-sky-400 mt-0.5">Auto-Syncs on Connect</p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 5,
+        title: "Daily Mess Tokens, Emergency SOS & Conclusion",
+        duration: 48,
+        subtitles: "इसके अतिरिक्त सिस्टम में 1-टैप इमरजेंसी एसओएस, डिजिटल मेस मील टोकन्स, ग्रीवेंस सिस्टम और 256-बिट एन्क्रिप्शन उपलब्ध है। Vercel पर हमारा लिंक परमानेंटली लाइव है। Campus Helper हॉस्टल लाइफ को आधुनिक, पेपरलेस और सुपर-सेफ बनाता है। धन्यवाद!",
+        renderVisual: () => `
+          <div class="w-full max-w-2xl bg-gradient-to-r from-slate-900 to-indigo-950 border border-slate-700 rounded-2xl p-6 text-center shadow-2xl">
+            <span class="text-3xl">🏆</span>
+            <h2 class="text-xl md:text-2xl font-black text-white mt-2">Ready to Win Sunday's Hackathon!</h2>
+            <p class="text-xs text-sky-400 mt-1">Live URL: https://campus-six-gold.vercel.app (Permanent / Never Expires)</p>
+            <div class="flex items-center justify-center gap-4 mt-4 flex-wrap text-xs">
+              <span class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-300">🚨 1-Tap SOS Alert</span>
+              <span class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-300">🍽️ Mess Food Tokens</span>
+              <span class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-300">🔒 256-Bit Enterprise Security</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-4 italic">Press 'रीस्टार्ट' to watch again or use Win+Alt+R to record to MP4!</p>
+          </div>
+        `
+      }
+    ];
+
+    let currentSceneIndex = 0;
+    let isPlaying = false;
+    let sceneTimer = null;
+    let sceneElapsed = 0;
+    let speechSynth = window.speechSynthesis;
+    let speechUtterance = null;
+    let hindiAudioEnabled = true;
+
+    const sceneNumberEl = document.getElementById('sceneNumber');
+    const sceneTitleEl = document.getElementById('sceneTitle');
+    const currentTimeDisplayEl = document.getElementById('currentTimeDisplay');
+    const visualStageEl = document.getElementById('sceneVisualStage');
+    const subtitlesTextEl = document.getElementById('subtitlesText');
+    const timelineProgressEl = document.getElementById('timelineProgress');
+    const scrubberCurrentEl = document.getElementById('scrubberCurrent');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIconEl = document.getElementById('playIcon');
+    const playTextEl = document.getElementById('playText');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const voiceLangBtn = document.getElementById('voiceLangBtn');
+
+    function formatTime(totalSeconds) {
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = Math.floor(totalSeconds % 60);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function calculateTotalElapsed() {
+      let sum = 0;
+      for (let i = 0; i < currentSceneIndex; i++) {
+        sum += SCENES[i].duration;
+      }
+      return sum + sceneElapsed;
+    }
+
+    function speakHindi(text) {
+      if (!hindiAudioEnabled || !('speechSynthesis' in window)) return;
+      try {
+        speechSynth.cancel();
+        speechUtterance = new SpeechSynthesisUtterance(text);
+        speechUtterance.rate = 1.0;
+        speechUtterance.pitch = 1.0;
+        
+        // Try finding a Hindi voice
+        const voices = speechSynth.getVoices();
+        const hindiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('HI'));
+        if (hindiVoice) {
+          speechUtterance.voice = hindiVoice;
+        } else {
+          speechUtterance.lang = 'hi-IN';
+        }
+        speechSynth.speak(speechUtterance);
+      } catch (e) {
+        console.error("SpeechSynthesis error:", e);
+      }
+    }
+
+    function renderCurrentScene() {
+      const scene = SCENES[currentSceneIndex];
+      sceneNumberEl.textContent = scene.id;
+      sceneTitleEl.textContent = scene.title;
+      visualStageEl.innerHTML = scene.renderVisual();
+      subtitlesTextEl.textContent = scene.subtitles;
+
+      // Highlight active chapter button
+      document.querySelectorAll('.chapter-btn').forEach((btn, idx) => {
+        if (idx === currentSceneIndex) {
+          btn.classList.add('bg-blue-600', 'text-white');
+          btn.classList.remove('bg-slate-800', 'text-slate-300');
+        } else {
+          btn.classList.remove('bg-blue-600', 'text-white');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
+        }
+      });
+
+      if (scene.onEnter) {
+        scene.onEnter();
+      }
+
+      if (isPlaying) {
+        speakHindi(scene.subtitles);
+      }
+    }
+
+    function updateProgress() {
+      const totalElapsed = calculateTotalElapsed();
+      const totalDuration = 240; // 4 minutes
+      const percent = Math.min(100, (totalElapsed / totalDuration) * 100);
+      timelineProgressEl.style.width = percent + '%';
+      const timeStr = formatTime(totalElapsed);
+      currentTimeDisplayEl.textContent = timeStr;
+      scrubberCurrentEl.textContent = timeStr;
+    }
+
+    function tick() {
+      sceneElapsed += 1;
+      updateProgress();
+      if (sceneElapsed >= SCENES[currentSceneIndex].duration) {
+        if (currentSceneIndex < SCENES.length - 1) {
+          currentSceneIndex++;
+          sceneElapsed = 0;
+          renderCurrentScene();
+        } else {
+          pauseVideo();
+        }
+      }
+    }
+
+    function playVideo() {
+      getAudioContext();
+      isPlaying = true;
+      playIconEl.textContent = '⏸️';
+      playTextEl.textContent = 'पॉज़ करें';
+      speakHindi(SCENES[currentSceneIndex].subtitles);
+      clearInterval(sceneTimer);
+      sceneTimer = setInterval(tick, 1000);
+    }
+
+    function pauseVideo() {
+      isPlaying = false;
+      playIconEl.textContent = '▶️';
+      playTextEl.textContent = 'वीडियो प्ले करें';
+      clearInterval(sceneTimer);
+      if (speechSynth) speechSynth.cancel();
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        pauseVideo();
+      } else {
+        playVideo();
+      }
+    }
+
+    function jumpToScene(index) {
+      currentSceneIndex = index;
+      sceneElapsed = 0;
+      updateProgress();
+      renderCurrentScene();
+      if (isPlaying) {
+        speakHindi(SCENES[currentSceneIndex].subtitles);
+      }
+    }
+
+    // Event Listeners
+    playPauseBtn.addEventListener('click', togglePlay);
+
+    prevBtn.addEventListener('click', () => {
+      if (currentSceneIndex > 0) {
+        jumpToScene(currentSceneIndex - 1);
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentSceneIndex < SCENES.length - 1) {
+        jumpToScene(currentSceneIndex + 1);
+      }
+    });
+
+    restartBtn.addEventListener('click', () => {
+      currentSceneIndex = 0;
+      sceneElapsed = 0;
+      updateProgress();
+      renderCurrentScene();
+      playVideo();
+    });
+
+    voiceLangBtn.addEventListener('click', () => {
+      hindiAudioEnabled = !hindiAudioEnabled;
+      if (!hindiAudioEnabled) {
+        if (speechSynth) speechSynth.cancel();
+        voiceLangBtn.textContent = '🔇 Hindi Audio: OFF';
+        voiceLangBtn.classList.replace('text-sky-300', 'text-slate-400');
+      } else {
+        voiceLangBtn.textContent = '🔊 Hindi Audio: ON';
+        voiceLangBtn.classList.replace('text-slate-400', 'text-sky-300');
+        if (isPlaying) speakHindi(SCENES[currentSceneIndex].subtitles);
+      }
+    });
+
+    // Timeline track click
+    document.getElementById('timelineTrack').addEventListener('click', (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const fraction = Math.max(0, Math.min(1, clickX / rect.width));
+      const targetSec = fraction * 240;
+      
+      let accum = 0;
+      for (let i = 0; i < SCENES.length; i++) {
+        if (targetSec <= accum + SCENES[i].duration || i === SCENES.length - 1) {
+          currentSceneIndex = i;
+          sceneElapsed = Math.floor(targetSec - accum);
+          break;
+        }
+        accum += SCENES[i].duration;
+      }
+      updateProgress();
+      renderCurrentScene();
+    });
+
+    // Initial render
+    window.onload = () => {
+      renderCurrentScene();
+      updateProgress();
+    };
+  </script>
+</body>
+</html>
