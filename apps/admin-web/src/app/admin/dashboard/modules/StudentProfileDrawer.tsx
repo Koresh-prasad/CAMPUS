@@ -97,8 +97,12 @@ export function StudentProfileDrawer({
         {/* Header */}
         <div className="p-5 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-md">
-              {student.name.slice(0, 2).toUpperCase()}
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-md overflow-hidden">
+              {student.avatarUrl ? (
+                <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+              ) : (
+                student.name.slice(0, 2).toUpperCase()
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
@@ -173,8 +177,12 @@ export function StudentProfileDrawer({
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 rounded-2xl bg-white text-slate-900 font-black text-xl flex items-center justify-center shrink-0 border-2 border-sky-400 shadow-md">
-                    {student.name.slice(0, 2).toUpperCase()}
+                  <div className="w-16 h-16 rounded-2xl bg-white text-slate-900 font-black text-xl flex items-center justify-center shrink-0 border-2 border-sky-400 shadow-md overflow-hidden">
+                    {student.avatarUrl ? (
+                      <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      student.name.slice(0, 2).toUpperCase()
+                    )}
                   </div>
                   <div className="space-y-0.5 min-w-0">
                     <h3 className="text-base font-extrabold text-white truncate">{student.name}</h3>

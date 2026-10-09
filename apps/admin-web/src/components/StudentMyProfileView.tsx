@@ -273,32 +273,95 @@ export default function StudentMyProfileView({
     return Math.round((score / total) * 100);
   }, [personalForm, familyForm, avatarUrl, academicData, lockerDocs]);
 
-  // Handle Avatar Upload
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper to downscale & compress image file on canvas (avoids quota issues and enables fast upload)
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_DIM = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_DIM) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            }
+          } else {
+            if (height > MAX_DIM) {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image for compression'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle Avatar Upload from File
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Photo must be less than 5 MB', 'error');
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (JPG, PNG, WebP)', 'error');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Image file must be less than 10 MB', 'error');
       return;
     }
 
     setUploadingAvatar(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      setAvatarUrl(dataUrl);
-      setUploadingAvatar(false);
+    try {
+      const compressedDataUrl = await compressImageFile(file);
+      setAvatarUrl(compressedDataUrl);
+      setSelectedAvatarPreview(compressedDataUrl);
 
       // Save to backend & session
-      try {
-        await saveProfileToBackend({ avatarUrl: dataUrl });
-        showToast('✓ Profile photo updated successfully!', 'success');
-      } catch (err) {
-        showToast('Photo saved locally in your active session', 'info');
+      await saveProfileToBackend({ avatarUrl: compressedDataUrl });
+      if (onUpdateUser) {
+        onUpdateUser({ ...user, avatarUrl: compressedDataUrl });
       }
-    };
-    reader.readAsDataURL(file);
+      showToast('✓ Profile photo uploaded and updated successfully!', 'success');
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      showToast('Could not process photo file. Please try again.', 'error');
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
+  // Reset to default photo
+  const handleResetAvatar = async () => {
+    const defaultUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
+    setAvatarUrl(defaultUrl);
+    setSelectedAvatarPreview(defaultUrl);
+    await saveProfileToBackend({ avatarUrl: defaultUrl });
+    if (onUpdateUser) {
+      onUpdateUser({ ...user, avatarUrl: defaultUrl });
+    }
+    showToast('✓ Profile photo reset to default', 'info');
   };
 
   // Helper to persist all 6-tab profile data into backend
@@ -633,13 +696,19 @@ export default function StudentMyProfileView({
               <label
                 htmlFor="student-profile-avatar-upload"
                 className="relative group cursor-pointer block shrink-0"
-                title="Click to update photo"
+                title="Click to choose a photo file from device"
               >
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/10 backdrop-blur-md text-white font-black text-3xl flex items-center justify-center shadow-lg shadow-black/20 overflow-hidden border-2 border-white/80 group-hover:scale-105 transition">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/10 backdrop-blur-md text-white font-black text-3xl flex items-center justify-center shadow-lg shadow-black/20 overflow-hidden border-2 border-white/80 group-hover:scale-105 transition relative">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     <span>{personalForm.fullName.slice(0, 2).toUpperCase()}</span>
+                  )}
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-blue-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white z-10">
+                      <RefreshCw className="w-6 h-6 animate-spin mb-1 text-white" />
+                      <span className="text-[10px] font-bold">Uploading...</span>
+                    </div>
                   )}
                 </div>
                 <div className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md border-2 border-white transition pointer-events-none group-hover:scale-110">
@@ -648,24 +717,35 @@ export default function StudentMyProfileView({
                 <input
                   id="student-profile-avatar-upload"
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
                   onChange={handleAvatarUpload}
                   className="sr-only"
                 />
               </label>
 
-              {/* Avatar Studio Quick Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedAvatarPreview(avatarUrl);
-                  setShowAvatarStudioModal(true);
-                }}
-                className="text-[11px] font-black bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-xl border border-white/30 backdrop-blur-sm transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Avatar Studio</span>
-              </button>
+              {/* Action Buttons under Avatar */}
+              <div className="flex items-center gap-1.5">
+                <label
+                  htmlFor="student-profile-avatar-upload"
+                  className="text-[11px] font-bold bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-xl border border-white/30 backdrop-blur-sm transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                  title="Upload profile photo file from device"
+                >
+                  <Upload className="w-3 h-3 text-white" />
+                  <span>Upload File</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAvatarPreview(avatarUrl);
+                    setShowAvatarStudioModal(true);
+                  }}
+                  className="text-[11px] font-bold bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded-xl border border-white/25 backdrop-blur-sm transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                  title="Choose avatar preset"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>Presets</span>
+                </button>
+              </div>
             </div>
 
             <div>
@@ -862,6 +942,86 @@ export default function StudentMyProfileView({
                     ? 'You have complete permission to modify all information below: Full Name, Roll No, Registration No, Branch, Batch, Semester, Contact details, and Addresses. Click "Save Changes" when finished.'
                     : 'All university credentials, demographics, and contact addresses can be customized. Click "Edit Details" to begin editing.'}
                 </p>
+              </div>
+            </div>
+
+            {/* Dedicated Profile Photo & ID Picture Upload Section */}
+            <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-5 shadow-xs">
+              <div className="relative shrink-0">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white border-2 border-blue-400/80 shadow-md overflow-hidden flex items-center justify-center relative group">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={personalForm.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-blue-600">
+                      {personalForm.fullName.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-blue-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white z-10">
+                      <RefreshCw className="w-5 h-5 animate-spin mb-1 text-white" />
+                      <span className="text-[10px] font-bold">Uploading...</span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-600 text-white rounded-lg shadow-sm border border-white">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">Student Profile & ID Photo</h4>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">
+                    Official Digital ID Photo
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Add or update your personal photo directly from file. This photo appears on your official Digital ID card, gate pass turnstiles, and college administration records.
+                </p>
+                <div className="text-[11px] text-slate-500 font-medium">
+                  Accepted formats: <span className="font-semibold text-slate-700">JPG, JPEG, PNG, WebP</span> (Up to 10 MB • Auto-optimized)
+                </div>
+
+                {/* Upload & Action Buttons */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
+                  <label
+                    htmlFor="student-personal-tab-photo-upload"
+                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer active:scale-95 transition"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Photo File</span>
+                    <input
+                      id="student-personal-tab-photo-upload"
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={handleAvatarUpload}
+                      className="sr-only"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAvatarPreview(avatarUrl);
+                      setShowAvatarStudioModal(true);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 font-bold text-xs flex items-center gap-1.5 border border-purple-200 cursor-pointer transition"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Avatar Presets</span>
+                  </button>
+
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleResetAvatar}
+                      className="px-3 py-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 text-xs font-semibold cursor-pointer transition"
+                      title="Reset photo to default"
+                    >
+                      Reset Photo
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2721,20 +2881,20 @@ export default function StudentMyProfileView({
                 <label className="block text-xs font-bold text-slate-700">Upload Photo from Device</label>
                 <label className="w-full px-3 py-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition">
                   <Camera className="w-4 h-4 text-blue-600" />
-                  <span>Browse Device (Max 5 MB)</span>
+                  <span>Browse Device (Max 10 MB)</span>
                   <input
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => {
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        if (typeof reader.result === 'string') {
-                          setSelectedAvatarPreview(reader.result);
-                        }
-                      };
-                      reader.readAsDataURL(file);
+                      try {
+                        const compressed = await compressImageFile(file);
+                        setSelectedAvatarPreview(compressed);
+                        showToast('✓ Photo preview ready! Click "Save as Profile Photo" to apply.', 'info');
+                      } catch (err) {
+                        showToast('Could not process selected image file', 'error');
+                      }
                     }}
                     className="sr-only"
                   />
