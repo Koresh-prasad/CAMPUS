@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import io from 'socket.io-client';
+import { playGatePassUniqueSound } from '../lib/audioSound';
 import {
   LayoutDashboard,
   FileText,
@@ -13,6 +15,9 @@ import {
   UserCheck,
   RefreshCw,
   BellRing,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
 import GatePassOverviewTab from './gatepass/GatePassOverviewTab';
@@ -110,6 +115,29 @@ export default function HostelLeaveGatePassView({
   // Drawer & Modal State
   const [selectedPass, setSelectedPass] = useState<any | null>(null);
   const [isHelpdeskOpen, setIsHelpdeskOpen] = useState(false);
+  const [livePassToast, setLivePassToast] = useState<{
+    id?: string;
+    studentName?: string;
+    roomNumber?: string;
+    passType?: string;
+    destination?: string;
+  } | null>(null);
+
+  // Sync external passes from parent dashboard
+  useEffect(() => {
+    if (externalPasses && externalPasses.length > 0) {
+      setPasses((prev) => {
+        const map = new Map<string, any>();
+        prev.forEach((p) => map.set(p.id, p));
+        externalPasses.forEach((p) => {
+          if (p.id) {
+            map.set(p.id, { ...map.get(p.id), ...p });
+          }
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [externalPasses]);
 
   // Fetch Stats and Live Whos Out
   const fetchOverviewData = useCallback(async () => {
@@ -162,14 +190,63 @@ export default function HostelLeaveGatePassView({
     }
   }, [currentPage, filters]);
 
-  // Initial and reactive load
+  // Initial and continuous 4-second live polling + WebSocket updates
   useEffect(() => {
     fetchOverviewData();
-  }, [fetchOverviewData]);
-
-  useEffect(() => {
     fetchPasses();
-  }, [fetchPasses]);
+
+    // 4-second auto-poll so admin always sees new passes in real-time
+    const interval = setInterval(() => {
+      fetchPasses();
+      fetchOverviewData();
+    }, 4000);
+
+    // Socket.io for immediate push notifications
+    const socketUrl = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
+    let socket: any = null;
+    try {
+      socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+      
+      const onPassIncoming = (data: any) => {
+        console.log('⚡ Live pass event in HostelLeaveGatePassView:', data);
+        playGatePassUniqueSound();
+        setLivePassToast({
+          id: data.passId || data.id,
+          studentName: data.studentName || 'Student Resident',
+          roomNumber: data.roomNumber || 'Hostel',
+          passType: data.passType || 'Gate Pass',
+          destination: data.destination || 'Campus Outing',
+        });
+        setTimeout(() => setLivePassToast(null), 6500);
+        fetchPasses();
+        fetchOverviewData();
+      };
+
+      socket.on('pass:requested', onPassIncoming);
+      socket.on('pass:created', onPassIncoming);
+      socket.on('pass:status_update', () => {
+        fetchPasses();
+        fetchOverviewData();
+      });
+      socket.on('pass:approved', () => {
+        fetchPasses();
+        fetchOverviewData();
+      });
+      socket.on('pass:rejected', () => {
+        fetchPasses();
+        fetchOverviewData();
+      });
+    } catch (err) {
+      console.warn('Socket connection note in HostelLeaveGatePassView:', err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [fetchPasses, fetchOverviewData]);
 
   // Core Actions connected to backend
   const handleApprove = async (id: string, notes?: string) => {
@@ -331,7 +408,63 @@ export default function HostelLeaveGatePassView({
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 relative">
+      {/* Real-Time Live Pass Push Notification Toast */}
+      {livePassToast && (
+        <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-300 max-w-sm w-full">
+          <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-black text-lg shadow-md">
+              🚪
+            </div>
+            <div className="flex-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-amber-400 uppercase tracking-wider text-[10px]">
+                  ⚡ Live Pass Applied
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLivePassToast(null)}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <p className="font-bold text-white text-sm mt-0.5">
+                {livePassToast.studentName}
+              </p>
+              <p className="text-slate-300 text-[11px] mt-0.5">
+                {livePassToast.passType} • {livePassToast.roomNumber} • {livePassToast.destination}
+              </p>
+              <div className="mt-2.5 flex items-center gap-2">
+                {livePassToast.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (livePassToast.id) handleApprove(livePassToast.id);
+                      setLivePassToast(null);
+                    }}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Approve Now</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleTabChange('REQUESTS');
+                    setLivePassToast(null);
+                  }}
+                  className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg text-xs cursor-pointer"
+                >
+                  View Queue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Module Title & Global Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
@@ -421,6 +554,8 @@ export default function HostelLeaveGatePassView({
             setCurrentPage(1);
           }}
           onSelectPass={(p) => setSelectedPass(p)}
+          onApprove={(id, notes) => handleApprove(id, notes)}
+          onReject={(id, reason) => handleReject(id, reason)}
           loading={loading}
           onRefresh={() => {
             fetchPasses();

@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import io from 'socket.io-client';
+import { playGatePassApprovedTune } from '../../lib/audioSound';
 import {
   LayoutDashboard,
   Clock,
@@ -13,6 +15,9 @@ import {
   QrCode,
   Wifi,
   WifiOff,
+  CheckCircle2,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
 import StudentGatePassOverviewTab from './StudentGatePassOverviewTab';
@@ -59,6 +64,8 @@ export default function StudentHostelLeaveGatePassView({
   const [isApplyGatePassOpen, setIsApplyGatePassOpen] = useState(false);
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
   const [selectedPassForQR, setSelectedPassForQR] = useState<any | null>(null);
+  const [approvedCelebrationModal, setApprovedCelebrationModal] = useState<any | null>(null);
+  const knownPassesStatusRef = useRef<Record<string, string>>({});
 
   // Online / Offline Detection
   useEffect(() => {
@@ -108,8 +115,22 @@ export default function StudentHostelLeaveGatePassView({
       });
       if (res.ok) {
         const data = await res.json();
-        setPasses(data.passes || []);
+        const incomingPasses = data.passes || [];
+        setPasses(incomingPasses);
         if (data.stats) setStats(data.stats);
+
+        // Detect if any pass transitioned from PENDING to APPROVED
+        if (Array.isArray(incomingPasses)) {
+          incomingPasses.forEach((p: any) => {
+            const prev = knownPassesStatusRef.current[p.id];
+            if (prev && prev === 'PENDING' && p.status === 'APPROVED') {
+              console.log('🎉 Pass approved by Warden desk:', p.passNumber);
+              playGatePassApprovedTune();
+              setApprovedCelebrationModal(p);
+            }
+            knownPassesStatusRef.current[p.id] = p.status;
+          });
+        }
 
         // Also check if an active pass is cached
         if (data.stats?.activePass) {
@@ -136,6 +157,46 @@ export default function StudentHostelLeaveGatePassView({
     if (navigator.onLine) {
       syncOfflineQueue();
     }
+
+    // 3.5-second live polling interval so student receives status updates without refreshing
+    const pollInterval = setInterval(() => {
+      fetchMyPasses();
+    }, 3500);
+
+    // Socket.io for immediate real-time push notifications
+    const socketUrl = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:4000';
+    let socket: any = null;
+    try {
+      socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+      
+      const onPassApproved = (data: any) => {
+        console.log('🎉 Live pass:approved received via WebSocket on Student Platform:', data);
+        playGatePassApprovedTune();
+        setApprovedCelebrationModal(data);
+        fetchMyPasses();
+      };
+
+      socket.on('pass:approved', onPassApproved);
+      socket.on('pass:status_update', (data: any) => {
+        if (data?.status === 'APPROVED') {
+          playGatePassApprovedTune();
+          setApprovedCelebrationModal(data);
+        }
+        fetchMyPasses();
+      });
+      socket.on('pass:rejected', () => {
+        fetchMyPasses();
+      });
+    } catch (e) {
+      console.warn('Student socket listener note:', e);
+    }
+
+    return () => {
+      clearInterval(pollInterval);
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, [fetchMyPasses]);
 
   // Action handlers calling real backend endpoints
@@ -386,6 +447,94 @@ export default function StudentHostelLeaveGatePassView({
         studentProfile={studentProfile}
         onClose={() => setSelectedPassForQR(null)}
       />
+
+      {/* Real-time Approved Celebration Modal */}
+      {approvedCelebrationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl shadow-2xl border-2 border-emerald-500/40 p-6 text-center overflow-hidden">
+            {/* Top ambient glow */}
+            <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setApprovedCelebrationModal(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Success Badge */}
+            <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 mb-4 ring-8 ring-emerald-50">
+              <CheckCircle2 className="w-10 h-10" />
+              <Sparkles className="w-5 h-5 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Warden Desk Approved
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900">
+              Gate Pass Approved!
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-5">
+              Your pass has been authorized by the hostel warden. You can now present your verified digital turnstile QR code at the campus gate.
+            </p>
+
+            {/* Pass Summary Card */}
+            <div className="bg-slate-50 rounded-2xl p-3.5 mb-5 text-left text-xs border border-slate-200 space-y-2">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                <span className="text-slate-500">Pass Number</span>
+                <span className="font-mono font-bold text-slate-800">
+                  {approvedCelebrationModal.passNumber || approvedCelebrationModal.id?.slice(0, 8)?.toUpperCase() || 'PASS-AUTHORIZED'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Pass Type</span>
+                <span className="font-semibold text-slate-800">
+                  {approvedCelebrationModal.passType?.replace('_', ' ') || 'Gate Pass'}
+                </span>
+              </div>
+              {approvedCelebrationModal.destination && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Destination</span>
+                  <span className="font-semibold text-slate-800 truncate max-w-[180px]">
+                    {approvedCelebrationModal.destination}
+                  </span>
+                </div>
+              )}
+              {approvedCelebrationModal.validTill && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Valid Until</span>
+                  <span className="font-semibold text-emerald-600">
+                    {new Date(approvedCelebrationModal.validTill).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setSelectedPassForQR(approvedCelebrationModal);
+                  setApprovedCelebrationModal(null);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-sm shadow-lg shadow-emerald-600/25 transition-all cursor-pointer"
+              >
+                <QrCode className="w-4 h-4" />
+                Show Turnstile QR Pass
+              </button>
+              <button
+                onClick={() => setApprovedCelebrationModal(null)}
+                className="w-full py-2.5 px-4 rounded-xl text-slate-600 hover:bg-slate-100 font-medium text-xs transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

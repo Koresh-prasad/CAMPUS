@@ -821,10 +821,16 @@ router.post('/:id/approve', optionalAuthMiddleware, async (req: Request, res: Re
     broadcastPassUpdate({
       type: 'APPROVED',
       passId: pass.id,
+      id: pass.id,
       passNumber: pass.passNumber,
       residentId: pass.residentId,
-      studentName: pass.resident.name,
+      studentName: pass.resident?.name,
       status: 'APPROVED',
+      passType: pass.passType,
+      destination: pass.destination,
+      validFrom: pass.validFrom ? pass.validFrom.toISOString() : undefined,
+      validTill: pass.validTill ? pass.validTill.toISOString() : undefined,
+      qrCodeToken: pass.qrCodeToken,
       notes,
     });
 

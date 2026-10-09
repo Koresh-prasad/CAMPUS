@@ -89,7 +89,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
-import { playCuteNotificationSound, playCuteSuccessSound } from '../../../lib/audioSound';
+import { playCuteNotificationSound, playCuteSuccessSound, playGatePassApprovedTune } from '../../../lib/audioSound';
 import StudentHostelLeaveGatePassView from '../../../components/student-gatepass/StudentHostelLeaveGatePassView';
 import StudentMyProfileView from '../../../components/StudentMyProfileView';
 
@@ -2829,8 +2829,17 @@ function StudentPortalContent({
       fetchStudentData();
     });
 
-    socket.on('pass:status_update', () => {
-      playCuteNotificationSound();
+    socket.on('pass:approved', () => {
+      playGatePassApprovedTune();
+      fetchStudentData();
+    });
+
+    socket.on('pass:status_update', (data: any) => {
+      if (data?.status === 'APPROVED') {
+        playGatePassApprovedTune();
+      } else {
+        playCuteNotificationSound();
+      }
       fetchStudentData();
     });
 

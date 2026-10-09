@@ -257,3 +257,60 @@ export function playEmergencySirenSound(volume = 0.4, cycles = 2) {
     console.warn('Emergency siren playback error:', err);
   }
 }
+
+/**
+ * 🎉 Gate Pass Approved Notification Tune
+ * Delightful, celebratory chime fanfare when Warden/Admin approves gate pass / leave.
+ * Plays a bright ascending arpeggio with shimmering acoustic resonance (C5 -> E5 -> G5 -> C6 -> E6).
+ */
+export function playGatePassApprovedTune(volume = 0.45) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    // Celebratory 5-tone fanfare (C Major arpeggio + high sparkle chime)
+    const notes = [
+      { freq: 523.25, time: 0.00, dur: 0.15, gain: volume * 0.70 }, // C5
+      { freq: 659.25, time: 0.10, dur: 0.15, gain: volume * 0.80 }, // E5
+      { freq: 783.99, time: 0.20, dur: 0.18, gain: volume * 0.90 }, // G5
+      { freq: 1046.50, time: 0.32, dur: 0.22, gain: volume * 1.05 }, // C6
+      { freq: 1318.51, time: 0.45, dur: 0.65, gain: volume * 1.20 }, // E6 (lingering celebration ring)
+    ];
+
+    notes.forEach(({ freq, time, dur, gain: noteGain }) => {
+      // 1. Primary sweet bell oscillator
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + time);
+
+      gainNode.gain.setValueAtTime(0.001, now + time);
+      gainNode.gain.linearRampToValueAtTime(noteGain, now + time + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + time + dur);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now + time);
+      osc.stop(now + time + dur);
+
+      // 2. Harmonic overtone sparkle
+      const harmonic = ctx.createOscillator();
+      const harmGain = ctx.createGain();
+      harmonic.type = 'triangle';
+      harmonic.frequency.setValueAtTime(freq * 2, now + time);
+
+      harmGain.gain.setValueAtTime(0.001, now + time);
+      harmGain.gain.linearRampToValueAtTime(noteGain * 0.25, now + time + 0.01);
+      harmGain.gain.exponentialRampToValueAtTime(0.0001, now + time + (dur * 0.6));
+
+      harmonic.connect(harmGain);
+      harmGain.connect(ctx.destination);
+      harmonic.start(now + time);
+      harmonic.stop(now + time + (dur * 0.6));
+    });
+  } catch (err) {
+    console.warn('Gate pass approved tune playback notice:', err);
+  }
+}
+

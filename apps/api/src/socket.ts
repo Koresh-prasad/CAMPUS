@@ -73,15 +73,34 @@ export function broadcastVisitorOverstay(data: any) {
 
 export function broadcastPassUpdate(data: any) {
   if (!io) return;
-  console.log('[WebSocket Alert] Broadcasting pass update:', data.passNumber || data.passId || data.id);
+  console.log('[WebSocket Alert] Broadcasting pass update:', data.passNumber || data.passId || data.id, 'Status/Type:', data.status || data.type);
   io.emit(SOCKET_EVENTS.PASS_STATUS_UPDATE, data);
-  io.emit('pass:requested', data);
-  io.emit('pass:created', data);
   io.emit('pass:status_update', data);
+
+  const isApproved = data.status === 'APPROVED' || data.type === 'APPROVED';
+  const isRejected = data.status === 'REJECTED' || data.type === 'REJECTED';
+
+  if (isApproved) {
+    io.emit('pass:approved', data);
+  } else if (isRejected) {
+    io.emit('pass:rejected', data);
+  } else {
+    io.emit('pass:requested', data);
+    io.emit('pass:created', data);
+  }
+
   io.emit('notification:new', {
     id: `notif-pass-${Date.now()}`,
-    title: `🚪 Gate Pass / Leave: ${data.studentName || 'Student'}`,
-    message: `${data.passType || 'Pass'} applied for ${data.destination || 'outing'} (${data.roomNumber || 'Room'})`,
+    title: isApproved
+      ? `🎉 Gate Pass Approved: ${data.passNumber || ''}`
+      : isRejected
+      ? `❌ Gate Pass Declined: ${data.passNumber || ''}`
+      : `🚪 Gate Pass / Leave: ${data.studentName || 'Student'}`,
+    message: isApproved
+      ? `Your ${data.passType || 'pass'} [${data.passNumber || ''}] has been approved by the Warden Office!`
+      : isRejected
+      ? `Your pass request was declined: ${data.reason || 'Contact Warden Office'}`
+      : `${data.passType || 'Pass'} applied for ${data.destination || 'outing'} (${data.roomNumber || 'Room'})`,
     type: 'PASS',
     passNumber: data.passNumber,
     timestamp: new Date().toISOString(),

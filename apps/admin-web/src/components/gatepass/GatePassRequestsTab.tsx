@@ -36,6 +36,8 @@ interface GatePassRequestsTabProps {
   };
   onFilterChange: (filters: any) => void;
   onSelectPass: (pass: any) => void;
+  onApprove?: (id: string, notes?: string) => Promise<void>;
+  onReject?: (id: string, reason: string) => Promise<void>;
   loading: boolean;
   onRefresh: () => void;
 }
@@ -49,6 +51,8 @@ export default function GatePassRequestsTab({
   filters,
   onFilterChange,
   onSelectPass,
+  onApprove,
+  onReject,
   loading,
   onRefresh,
 }: GatePassRequestsTabProps) {
@@ -341,15 +345,47 @@ export default function GatePassRequestsTab({
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectPass(pass);
-                        }}
-                        className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Details
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {pass.status === 'PENDING' && onApprove && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onApprove(pass.id);
+                            }}
+                            className="px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-lg shadow-xs transition flex items-center gap-1 cursor-pointer"
+                            title="Approve this gate pass request"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve</span>
+                          </button>
+                        )}
+                        {pass.status === 'PENDING' && onReject && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const reason = prompt('Enter rejection reason (optional):') || 'Declined by Hostel Admin';
+                              onReject(pass.id, reason);
+                            }}
+                            className="px-2 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 rounded-lg transition cursor-pointer"
+                            title="Decline request"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectPass(pass);
+                          }}
+                          className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Details</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
