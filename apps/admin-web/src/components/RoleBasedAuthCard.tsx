@@ -695,18 +695,6 @@ export default function RoleBasedAuthCard({
               <span>Continue as {selectedRole === 'ADMIN_MANAGER' ? 'Admin Manager' : 'Student'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-
-            {/* College Onboarding Link */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={onOpenRegisterCollege}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center space-x-1 mx-auto cursor-pointer"
-              >
-                <Building className="w-3.5 h-3.5" />
-                <span>Register New College / Campus</span>
-              </button>
-            </div>
           </div>
         )}
 

@@ -1573,7 +1573,7 @@ export default function AdminPanel() {
                 {/* Creative quote */}
                 <div className="inline-block w-fit mb-1">
                   <p className="text-sm sm:text-base font-semibold italic text-amber-300 tracking-wide font-serif drop-shadow">
-                    “Better Campus Life Starts Here!”
+                    “Connecting Students. Simplifying Campus Life.”
                   </p>
                 </div>
 
