@@ -166,6 +166,7 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
     const updatedProfile = await prisma.residentProfile.upsert({
       where: { userId },
       update: {
+        ...((req.body.studentId || req.body.rollNo) ? { studentId: String(req.body.studentId || req.body.rollNo) } : {}),
         ...(roomNumber ? { roomNumber } : {}),
         ...(blockName ? { blockName } : {}),
         ...(course ? { course } : {}),
