@@ -93,6 +93,7 @@ import io from 'socket.io-client';
 import { playCuteNotificationSound, playCuteSuccessSound, playGatePassApprovedTune } from '../../../lib/audioSound';
 import StudentHostelLeaveGatePassView from '../../../components/student-gatepass/StudentHostelLeaveGatePassView';
 import StudentMyProfileView from '../../../components/StudentMyProfileView';
+import NetworkStatusBadge from '../../../components/NetworkStatusBadge';
 
 const API_BASE = '/api';
 
@@ -3536,12 +3537,8 @@ function StudentPortalContent({
           </div>
 
           <div className="flex items-center space-x-2.5 shrink-0">
-            {!isOnline && (
-              <span className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-800 px-3 py-1 rounded-full font-bold border border-amber-300 shadow-xs" title="You are working offline. Cached data is available and actions will sync when reconnected.">
-                <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                <span>Offline Mode (Cached)</span>
-              </span>
-            )}
+            {/* Real-Time Network Offline / Online Detection */}
+            <NetworkStatusBadge variant="student" onReconnect={fetchStudentData} />
 
             {submitSuccess && (
               <span className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-bold border border-emerald-200 animate-pulse">

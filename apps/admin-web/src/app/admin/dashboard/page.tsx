@@ -18,6 +18,7 @@ import SettingsView from '../../../components/SettingsView';
 import AdminGrievanceDeskView from '../../../components/AdminGrievanceDeskView';
 import AdminCentralizedReportsView from '../../../components/AdminCentralizedReportsView';
 import AdminAuditLogsView from '../../../components/AdminAuditLogsView';
+import NetworkStatusBadge from '../../../components/NetworkStatusBadge';
 import {
   playCuteNotificationSound,
   playCuteSuccessSound,
@@ -1501,8 +1502,11 @@ function AdminPortalContent({
             )}
           </div>
 
-          {/* Right: Quick Action, Notification Bell, Calendar/Time, College Selector */}
+          {/* Right: Network Status, Quick Action, Notification Bell, Calendar/Time, College Selector */}
           <div className="flex items-center space-x-3 shrink-0 ml-4">
+            {/* Real-time Network Offline / Online Detection */}
+            <NetworkStatusBadge variant="admin" onReconnect={fetchAdminData} />
+
             {/* Quick Action Button */}
             <div className="relative shrink-0">
               <button
